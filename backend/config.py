@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: config.py
-@time: 2024-07-26 11:00
+@time: 2025-06-26 11:00
 @desc: DeepReader backend configuration settings
 """
 from typing import Literal, Dict, Any

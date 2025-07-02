@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: pdf_converter.py
-@time: 2024-07-16 12:00
+@time: 2025-06-16 12:00
 @desc: 使用 marker API 实现 PDF 到纯净 Markdown 的转换
 """
 import json

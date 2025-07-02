@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: IterativeReadingLoop.py
-@time: 2024-07-26 15:00
+@time: 2025-06-26 15:00
 @desc: DeepReader 主动式阅读循环的核心节点
 """
 import logging

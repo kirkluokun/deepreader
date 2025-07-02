@@ -93,8 +93,8 @@ pyenv local 3.12.3
 
 **a. 克隆项目并进入目录**
 ```bash
-git clone https://github.com/your-repo/FinAIcrew.git
-cd FinAIcrew/dynamic-gptr/gpt_researcher/deepreader
+git clone https://github.com/kirkluokun/deepreader.git
+cd deepreader
 ```
 
 **b. 使用 Poetry 安装依赖**
@@ -115,8 +115,8 @@ poetry shell
 
 **a. 克隆项目并进入目录**
 ```bash
-git clone https://github.com/your-repo/FinAIcrew.git
-cd FinAIcrew/dynamic-gptr/gpt_researcher/deepreader
+git clone https://github.com/kirkluokun/deepreader.git
+cd deepreader
 ```
 
 **b. 创建并激活虚拟环境**

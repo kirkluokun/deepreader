@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: state.py
-@time: 2024-07-16 10:00
+@time: 2025-06-16 10:00
 @desc: 定义 DeepReader Agent 的核心状态对象
 """
 

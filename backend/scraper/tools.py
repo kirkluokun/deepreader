@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: tools.py
-@time: 2024-07-25 12:00
+@time: 2025-06-25 12:00
 @desc: 将 scraper 子模块中的转换器函数注册为 LangChain/LangGraph 工具。
 """
 

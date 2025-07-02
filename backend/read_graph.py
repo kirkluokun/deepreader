@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: read_graph.py
-@time: 2024-07-25 15:00
+@time: 2025-06-25 15:00
 @desc: 定义并编译 DeepReader 的核心 LangGraph 流程
 """
 import logging

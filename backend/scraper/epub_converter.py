@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: epub_converter.py
-@time: 2024-07-29 12:00
+@time: 2025-06-29 12:00
 @desc: 使用 ebooklib 实现 EPUB 到纯净 Markdown 的转换
 """
 import ebooklib

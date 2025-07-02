@@ -20,13 +20,14 @@ gpt_researcher.egg-info/
 
 #Ignore my local docs
 my-docs/
-dynamic-gptr/gpt_researcher/deepreader/backend/prompts_CHN.md
-dynamic-gptr/gpt_researcher/deepreader/backend/prompts-chapter.py
-dynamic-gptr/gpt_researcher/deepreader/PLAN.md
-dynamic-gptr/gpt_researcher/deepreader/backend/memory
-dynamic-gptr/gpt_researcher/deepreader/backend/cache
-/input
-/test
+backend/prompts_CHN.md
+backend/prompts-chapter.py
+PLAN.md
+backend/memory/
+backend/cache/
+input/
+test/
+PRD.md
 
 #Ignore pycache
 **/__pycache__/

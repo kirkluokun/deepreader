@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: multipdf.py
-@time: 2024-07-21
+@time: 2025-06-21
 @desc: 此脚本处理指定目录中的所有 PDF 文件，
        使用 marker API 将它们转换为 Markdown，
        并将输出保存到指定目录。

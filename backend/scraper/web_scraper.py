@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: web_scraper.py
-@time: 2024-07-25 11:00
+@time: 2025-06-25 11:00
 @desc: 一个服务于 deepreader 的网页抓取工具，使用 Crawl4AI 提取内容。
 """
 import asyncio

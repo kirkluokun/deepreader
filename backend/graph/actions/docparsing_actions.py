@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: docparsing_actions.py
-@time: 2024-07-25 14:00
+@time: 2025-06-25 14:00
 @desc: DeepReader 的文档解析和元数据提取核心动作
 """
 import logging

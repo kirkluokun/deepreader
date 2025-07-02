@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: clean_rule.py
-@time: 2024-07-29 12:00
+@time: 2025-06-29 12:00
 @desc: 通用的 Markdown 文本清洗函数，用于移除各种不需要的格式和标签。
 """
 import re

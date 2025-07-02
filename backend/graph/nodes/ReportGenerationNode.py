@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: ReportGenerationNode.py
-@time: 2024-07-28 12:00
+@time: 2025-06-28 12:00
 @desc: DeepReader 写作研讨会的总控节点
 """
 import logging

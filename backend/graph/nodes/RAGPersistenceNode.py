@@ -2,7 +2,7 @@
 """
 @author: FinAI-Chat
 @file: RAGPersistenceNode.py
-@time: 2024-07-25 14:15
+@time: 2025-06-25 14:15
 @desc: 一个多功能的 LangGraph 节点，负责文档的完整预处理和持久化流程。
 """
 import logging
