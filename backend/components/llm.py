@@ -6,26 +6,20 @@
 @desc: 封装了 DeepReader 项目中所有与 LLM 调用相关的功能
 """
 import logging
-from gpt_researcher.config import Config, config
+from ..config import deep_reader_config
 from .google_llm import call_google_llm
 from gpt_researcher.utils.llm import create_chat_completion
 
 import numpy as np
 
 
-# 初始化一个全局配置实例，方便在所有 action 中访问模型等设置
-# Config 类会自动从 .env 和/或 config.py 加载配置
-try:
-    config = Config()
-except ImportError as e:
-    logging.error(f"无法导入或初始化 Config 类: {e}。请确保 gpt_researcher/config/config.py 存在且正确。")
-    config = None
-
+# 使用本地配置
+config = deep_reader_config
 
 
 async def call_writer_llm(prompt: str) -> str:
     """
-    封装对 'smart_llm' 的调用，用于需要联网搜索的文本生成任务，如总结、提问等。
+    封装对 'strategic_llm' 的调用，用于需要联网搜索的文本生成任务，如总结、提问等。
     """
     if not config:
         raise RuntimeError("Config 未被正确初始化，无法调用 LLM。")
@@ -42,14 +36,12 @@ async def call_writer_llm(prompt: str) -> str:
             messages=messages,
             model=llm_model,
             llm_provider=llm_provider,
-            temperature= 0.5,
-            llm_kwargs=config.llm_kwargs.copy(),
+            temperature=config.temperature,
+            llm_kwargs=config.llm_kwargs,
         )
     except Exception as e:
         logging.error(f"调用 Strategic LLM 时发生错误: {e}")
         return f"Error calling Strategic LLM: {e}"
-
-
 
 
 async def call_smart_llm(prompt: str) -> str:
@@ -71,13 +63,12 @@ async def call_smart_llm(prompt: str) -> str:
             messages=messages,
             model=llm_model,
             llm_provider=llm_provider,
-            temperature= 0.5,
-            llm_kwargs=config.llm_kwargs.copy(),
+            temperature=config.temperature,
+            llm_kwargs=config.llm_kwargs,
         )
     except Exception as e:
         logging.error(f"调用 Smart LLM 时发生错误: {e}")
         return f"Error calling Smart LLM: {e}"
-
 
 
 async def call_fast_llm(prompt: str) -> str:
@@ -107,8 +98,8 @@ async def call_fast_llm(prompt: str) -> str:
             messages=messages,
             model=llm_model,
             llm_provider=llm_provider,
-            temperature=0.5,
-            llm_kwargs=config.llm_kwargs.copy(),
+            temperature=config.temperature,
+            llm_kwargs=config.llm_kwargs,
         )
     except Exception as e:
         import traceback
@@ -152,7 +143,7 @@ async def call_search_llm(prompt: str) -> str:
                 model=llm_model,
                 llm_provider=llm_provider,
                 temperature=config.temperature,
-                llm_kwargs=config.llm_kwargs.copy(),
+                llm_kwargs=config.llm_kwargs,
             )
         except Exception as e:
             logging.error(f"调用 Search LLM ({llm_provider}) 时发生错误: {e}")

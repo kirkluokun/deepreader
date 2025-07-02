@@ -10,14 +10,14 @@ from typing import Dict, Any, List
 import json
 from json_repair import loads as json_repair_loads
 
-from gpt_researcher.deepreader.backend.read_state import DeepReaderState
-from gpt_researcher.deepreader.backend.prompts import (
+from backend.read_state import DeepReaderState
+from backend.prompts import (
     READING_AGENT_PROMPT, 
     SUMMARY_AGENT_PROMPT, 
     KEY_INFO_AGENT_PROMPT
 )
-from gpt_researcher.deepreader.backend.components.llm import call_fast_llm, call_smart_llm
-from gpt_researcher.deepreader.backend.config import deep_reader_config
+from backend.components.llm import call_fast_llm, call_smart_llm
+from backend.config import deep_reader_config
 
 
 async def reading_agent_action(

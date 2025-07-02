@@ -71,3 +71,4 @@ CURSOR_RULES.md
 
 # session cache, wherever it is
 **/session_cache.json
+backend/knowledge/

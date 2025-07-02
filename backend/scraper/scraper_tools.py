@@ -12,7 +12,7 @@ from langchain_core.tools import tool
 # 导入底层的转换逻辑
 from .pdf_converter import convert_pdf_to_markdown
 from .epub_converter import convert_epub_to_markdown
-from .web_scraper import scrape_urls_to_markdown
+# from .web_scraper import scrape_urls_to_markdown
 
 
 @tool
@@ -56,5 +56,5 @@ async def web_urls_to_markdown_tool(urls: List[str]) -> List[str]:
 all_scraper_tools = [
     pdf_to_markdown_tool,
     epub_to_markdown_tool,
-    web_urls_to_markdown_tool,
+    # web_urls_to_markdown_tool,
 ] 

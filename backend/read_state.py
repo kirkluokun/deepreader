@@ -127,6 +127,12 @@ class DeepReaderState(TypedDict):
     draft_report: Optional[List[Dict[str, Any]]]
     """(Writer产出) 最终生成的、结构与大纲一致的完整报告，内容已被填充。"""
     
+    reading_completed: Optional[bool]
+    """
+    标记迭代阅读循环是否已完成。
+    当所有片段都已阅读完毕时，该字段被设置为 True。
+    """
+    
     error: Optional[str]
     """
     记录图执行过程中可能发生的错误信息。

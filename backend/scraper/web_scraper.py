@@ -10,7 +10,7 @@ import logging
 from typing import List, Optional
 
 # 复用现有的 Crawl4AI 爬虫组件
-from gpt_researcher.scraper.craw4ai_scraper.c4ai import Crawl4AIScraper
+# from craw4ai_scraper.c4ai import Crawl4AIScraper
 
 # 配置基础日志
 logging.basicConfig(

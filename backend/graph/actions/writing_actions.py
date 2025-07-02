@@ -11,7 +11,7 @@ from typing import Dict, Any, List, Optional
 from thefuzz import process, fuzz
 from json_repair import loads as json_repair_loads
 
-from gpt_researcher.deepreader.backend.prompts import (
+from backend.prompts import (
     ANALYZE_NARRATIVE_FLOW_PROMPT,
     EXTRACT_THEMES_PROMPT,
     CRITIQUE_THEMES_PROMPT,
@@ -20,10 +20,10 @@ from gpt_researcher.deepreader.backend.prompts import (
     SELECT_RELEVANT_SUMMARIES_PROMPT,
     SELECT_RELEVANT_KEY_INFO_PROMPT,
 )
-from gpt_researcher.deepreader.backend.components.llm import call_smart_llm, call_writer_llm, call_fast_llm
-from gpt_researcher.utils.google_llm import call_google_llm
-from gpt_researcher.deepreader.backend.graph.actions.rag_actions import chat_with_retriever
-from gpt_researcher.deepreader.backend.config import deep_reader_config
+from backend.components.llm import call_smart_llm, call_writer_llm, call_fast_llm
+# from utils.google_llm import call_google_llm
+from backend.graph.actions.rag_actions import chat_with_retriever
+from backend.config import deep_reader_config
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -367,15 +367,15 @@ async def rag_chat_action(query: str, db_name: str, user_question: str) -> str:
         return f"An error occurred during RAG retrieval: {e}"
 
 
-async def search_with_google_action(query: str) -> str:
-    """
-    互联网搜索 Action: 使用 Google 搜索来验证或丰富内容。
-    """
-    logging.info(f"--- 互联网搜索 Agent 开始搜索，查询: {query} ---")
-    try:
-        search_result = await call_google_llm(query)
-        logging.info("--- 互联网搜索 Agent 完成搜索 ---")
-        return search_result
-    except Exception as e:
-        logging.error(f"互联网搜索 Action 出现异常: {e}")
-        return f"An error occurred during Google search: {e}"
+# async def search_with_google_action(query: str) -> str:
+#     """
+#     互联网搜索 Action: 使用 Google 搜索来验证或丰富内容。
+#     """
+#     logging.info(f"--- 互联网搜索 Agent 开始搜索，查询: {query} ---")
+#     try:
+#         search_result = await call_google_llm(query)
+#         logging.info("--- 互联网搜索 Agent 完成搜索 ---")
+#         return search_result
+#     except Exception as e:
+#         logging.error(f"互联网搜索 Action 出现异常: {e}")
+#         return f"An error occurred during Google search: {e}"

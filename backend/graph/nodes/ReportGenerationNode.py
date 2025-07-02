@@ -10,8 +10,8 @@ import json
 import asyncio
 from typing import Dict, Any
 
-from gpt_researcher.deepreader.backend.read_state import DeepReaderState
-from gpt_researcher.deepreader.backend.graph.actions.writing_actions import (
+from backend.read_state import DeepReaderState
+from backend.graph.actions.writing_actions import (
     analyze_narrative_flow_action,
     extract_themes_action,
     critique_and_refine_action,
@@ -20,10 +20,10 @@ from gpt_researcher.deepreader.backend.graph.actions.writing_actions import (
     select_and_retrieve_summaries_action,
     select_and_retrieve_key_info_action,
 )
-from gpt_researcher.deepreader.backend.graph.actions.rag_actions import (
+from backend.graph.actions.rag_actions import (
     retrieve_rag_context
 )
-from gpt_researcher.deepreader.backend.config import deep_reader_config
+from backend.config import deep_reader_config
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

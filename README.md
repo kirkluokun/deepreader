@@ -22,36 +22,145 @@ DeepReader 的核心是一个由 LangGraph 精心编排的、有状态的图（G
 
 ```mermaid
 graph TD
-    A[文档输入: PDF/EPUB/URL] --> B(Step 1: 智能路由与解析);
-    B --> C(Step 2: 文档结构化与RAG存储);
-    C --> D(Step 3: 初始化阅读状态);
-    D --> E{迭代阅读循环};
+    %% 输入阶段
+    START([用户输入]) --> INPUT{文档类型判断}
+    INPUT -->|PDF文件| PDF[PDF解析器]
+    INPUT -->|EPUB文件| EPUB[EPUB解析器]
+    INPUT -->|网页URL| WEB[网页抓取器]
     
-    subgraph 迭代阅读循环
-        direction LR
-        E_Read[ReadingAgent: 阅读片段/章节];
-        E_Read --> E_Review[ReviewerAgent: 提问与RAG检索];
-        E_Review --> E_Summarize[SummaryAgent: 整合记忆与上下文];
+    %% RAG持久化节点 - 第一个核心节点
+    PDF --> RAG_NODE[RAG持久化节点<br/>RAGPersistenceNode]
+    EPUB --> RAG_NODE
+    WEB --> RAG_NODE
+    
+    subgraph RAG_PROCESS [RAG持久化处理]
+        RAG_CACHE{检查缓存}
+        RAG_PARSE[文档解析转换]
+        RAG_META[提取元数据]
+        RAG_CHUNK[内容分块]
+        RAG_STORE[向量存储<br/>FAISS+SQLite]
+        
+        RAG_CACHE -->|缓存存在| RAG_SKIP[跳过处理]
+        RAG_CACHE -->|缓存不存在| RAG_PARSE
+        RAG_PARSE --> RAG_META
+        RAG_META --> RAG_CHUNK
+        RAG_CHUNK --> RAG_STORE
     end
-
-    E --> F{是否完成所有章节?};
-    F --
- 否 --> E;
-    F -- 是 --> G(Step 4: 生成最终报告);
-    G --> H[输出: 结构化报告/JSON];
-
-    style E_Read fill:#cde4ff
-    style E_Review fill:#cde4ff
-    style E_Summarize fill:#cde4ff
+    
+    RAG_NODE --> RAG_PROCESS
+    RAG_PROCESS --> RAG_CHECK{RAG处理结果}
+    RAG_CHECK -->|失败| ERROR_END[错误终止]
+    RAG_CHECK -->|成功| READING_NODE
+    
+    %% 迭代阅读循环节点 - 第二个核心节点
+    READING_NODE[迭代阅读循环节点<br/>IterativeReadingLoop]
+    
+    subgraph READING_PROCESS [迭代阅读处理]
+        INIT_CHECK{首次运行?}
+        STRUCT_DOC[文档结构化<br/>生成阅读片段]
+        FIND_SNIPPET[查找下一个<br/>未读片段]
+        SNIPPET_CHECK{还有未读片段?}
+        
+        %% 三个Agent并行处理
+        subgraph AGENTS [智能体协作分析]
+            READING_AGENT[ReadingAgent<br/>阅读分析]
+            KEYINFO_AGENT[KeyInfoAgent<br/>关键信息提取]
+            REVIEWER_AGENT[ReviewerAgent<br/>RAG问答检索]
+            SUMMARY_AGENT[SummaryAgent<br/>记忆整合]
+        end
+        
+        UPDATE_STATE[更新状态<br/>标记片段已读]
+        
+        INIT_CHECK -->|是| STRUCT_DOC
+        INIT_CHECK -->|否| FIND_SNIPPET
+        STRUCT_DOC --> FIND_SNIPPET
+        FIND_SNIPPET --> SNIPPET_CHECK
+        SNIPPET_CHECK -->|有| AGENTS
+        SNIPPET_CHECK -->|无| READING_COMPLETE
+        AGENTS --> UPDATE_STATE
+        UPDATE_STATE --> FIND_SNIPPET
+    end
+    
+    READING_NODE --> READING_PROCESS
+    READING_PROCESS --> READING_CHECK{阅读完成?}
+    READING_CHECK -->|否| READING_NODE
+    READING_CHECK -->|是| REPORT_NODE
+    
+    %% 报告生成节点 - 第三个核心节点
+    REPORT_NODE[报告生成节点<br/>ReportGenerationNode]
+    
+    subgraph REPORT_PROCESS [写作研讨会]
+        NARRATIVE[脉络分析师<br/>梳理书籍脉络]
+        THEMES[主题思想家<br/>提炼核心思想]
+        
+        subgraph DEBATE [思想辩论环节]
+            CRITIC[批判者<br/>质疑与反驳]
+            REFINE[思想家<br/>优化完善]
+            DEBATE_CHECK{达成共识?}
+        end
+        
+        EDITOR[总编辑<br/>生成报告大纲]
+        
+        subgraph WRITING [迭代写作]
+            WRITER[Writer<br/>章节撰写]
+            MATERIAL[素材准备<br/>RAG+摘要+关键信息]
+        end
+        
+        NARRATIVE --> THEMES
+        THEMES --> DEBATE
+        DEBATE --> CRITIC
+        CRITIC --> REFINE
+        REFINE --> DEBATE_CHECK
+        DEBATE_CHECK -->|否| CRITIC
+        DEBATE_CHECK -->|是| EDITOR
+        EDITOR --> WRITING
+        WRITING --> FINAL_REPORT
+    end
+    
+    REPORT_NODE --> REPORT_PROCESS
+    REPORT_PROCESS --> FINAL_REPORT[最终结构化报告]
+    
+    %% 输出
+    FINAL_REPORT --> OUTPUT[输出文件<br/>JSON/Markdown]
+    READING_COMPLETE[阅读完成标志] --> REPORT_NODE
+    
+    %% 样式定义
+    classDef nodeStyle fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef processStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef agentStyle fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef errorStyle fill:#ffebee,stroke:#c62828,stroke-width:2px
+    
+    class RAG_NODE,READING_NODE,REPORT_NODE nodeStyle
+    class RAG_PROCESS,READING_PROCESS,REPORT_PROCESS processStyle
+    class READING_AGENT,KEYINFO_AGENT,REVIEWER_AGENT,SUMMARY_AGENT,NARRATIVE,THEMES,CRITIC,EDITOR,WRITER agentStyle
+    class ERROR_END errorStyle
 ```
 
-1.  **智能路由与解析 (Step 1)**：系统自动识别输入源（本地文件、URL），并调用相应的解析器（如 Marker 处理 PDF）将其高质量地转换为 Markdown 格式。
-2.  **文档结构化与RAG存储 (Step 2)**：系统解析 Markdown 内容，提取目录结构。同时，将文档分块（Chunking）并使用 FAISS 创建向量索引，为后续的 RAG 检索做好准备。
-3.  **迭代阅读循环 (Step 3)**：这是系统的核心。
-    -   **ReadingAgent**：负责阅读当前章节或片段，生成摘要、提取核心观点，并提出需要进一步探究的深度问题。
-    -   **ReviewerAgent**：接收 ReadingAgent 提出的问题，利用 RAG 在整个文档的知识库中进行检索，寻找答案或相关信息，以补充上下文或发现跨章节的联系。
-    -   **SummaryAgent**：整合前两个 Agent 的输出，更新全局的"阅读记忆"，为下一轮的阅读提供更丰富的背景信息。
-4.  **生成最终报告 (Step 4)**：在所有章节都经过迭代阅读后，系统会启动最终的报告生成流程，对整个阅读过程的产出进行汇总、整理和润色，最终形成多种格式的分析报告。
+**系统核心架构说明：**
+
+### 🔄 三大核心节点
+
+**1. RAG持久化节点 (RAGPersistenceNode)**
+- **功能**：文档预处理和向量化存储
+- **缓存机制**：基于文档路径哈希检查，避免重复处理
+- **输出**：Markdown内容、元数据、分块数据、FAISS向量库
+
+**2. 迭代阅读循环节点 (IterativeReadingLoop)**  
+- **功能**：模拟人类专家的主动式阅读过程
+- **智能体协作**：ReadingAgent、KeyInfoAgent、ReviewerAgent、SummaryAgent 并行工作
+- **状态管理**：维护阅读进度、跨片段上下文、累积记忆
+
+**3. 报告生成节点 (ReportGenerationNode)**
+- **功能**：多轮辩论式写作研讨会
+- **写作流程**：脉络分析 → 主题提炼 → 批判辩论 → 大纲制定 → 迭代写作
+- **并行优化**：素材准备（RAG检索、摘要选择、关键信息筛选）同步进行
+
+### 🎯 关键特性
+
+- **状态持久化**：所有处理状态通过 LangGraph Checkpointer 保存，支持断点续传
+- **并行处理**：多个 Agent 同时工作，提高处理效率
+- **智能缓存**：避免重复处理相同文档
+- **条件流转**：基于处理结果动态决定下一步流程
 
 ---
 
@@ -64,26 +173,70 @@ graph TD
 为了保证项目在不同环境下的一致性，我们强烈建议使用 `pyenv` 来管理 Python 版本，并结合 `poetry` 管理项目依赖。
 
 **a. 安装 pyenv** (如果尚未安装)
+
+**macOS (使用 Homebrew):**
 ```bash
-# 对于 macOS (使用 Homebrew)
 brew install pyenv
 ```
+
+**Windows (使用 pyenv-win):**
+```powershell
+# 使用 Git 安装 pyenv-win
+git clone https://github.com/pyenv-win/pyenv-win.git %USERPROFILE%\.pyenv
+
+# 或者使用 pip 安装
+pip install pyenv-win --target %USERPROFILE%\.pyenv
+```
+
+**Windows 环境变量配置:**
+在 Windows 系统中，需要手动添加环境变量：
+1. 按 `Win + R`，输入 `sysdm.cpl`，打开系统属性
+2. 点击"环境变量"按钮
+3. 在"用户变量"中添加以下变量：
+   - `PYENV` = `%USERPROFILE%\.pyenv\pyenv-win`
+   - `PYENV_ROOT` = `%USERPROFILE%\.pyenv\pyenv-win`
+   - `PYENV_HOME` = `%USERPROFILE%\.pyenv\pyenv-win`
+4. 在 `PATH` 变量中添加：
+   - `%USERPROFILE%\.pyenv\pyenv-win\bin`
+   - `%USERPROFILE%\.pyenv\pyenv-win\shims`
+
+**Linux/Ubuntu:**
+```bash
+curl https://pyenv.run | bash
+```
+
 安装后，请根据 `pyenv` 的提示完成 shell 的初始化配置。
 
 **b. 安装指定的 Python 版本**
-本项目在 `pyproject.toml` 中指定的 Python 版本为 `3.12.3`。
+本项目在 `pyproject.toml` 中指定的 Python 版本为 `3.12+`。
+
+**macOS/Linux:**
 ```bash
-# 安装 python 3.12.3
+# 安装 python 3.12.3 或更高版本
 pyenv install 3.12.3
 
 # 进入项目目录
 # git clone <your-repo-url>
-# cd FinAIcrew/dynamic-gptr/gpt_researcher/deepreader
+# cd deepreader
 
 # 为当前目录设置 python 版本
 pyenv local 3.12.3
 ```
-设置成功后，在此目录中执行 `python --version` 应该会显示 `3.12.3`。`poetry` 会自动检测并使用这个由 `pyenv` 设置的版本。
+
+**Windows:**
+```powershell
+# 安装 python 3.12.3 或更高版本
+pyenv install 3.12.3
+
+# 进入项目目录 (使用 PowerShell 或 CMD)
+# git clone <your-repo-url>
+# cd deepreader
+
+# 为当前目录设置 python 版本
+pyenv local 3.12.3
+```
+
+设置成功后，在此目录中执行 `python --version` 应该会显示 `3.12.3` 或更高版本。
 
 ### 2. 安装依赖
 
@@ -120,12 +273,26 @@ cd deepreader
 ```
 
 **b. 创建并激活虚拟环境**
+
+**macOS/Linux:**
 ```bash
 # 创建虚拟环境
 python3 -m venv .venv
 
-# 激活虚拟环境 (macOS/Linux)
+# 激活虚拟环境
 source .venv/bin/activate
+```
+
+**Windows:**
+```powershell
+# 创建虚拟环境
+python -m venv .venv
+
+# 激活虚拟环境 (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# 或者在 CMD 中激活
+# .venv\Scripts\activate.bat
 ```
 
 **c. 安装依赖**
@@ -135,29 +302,282 @@ pip install -r requirements.txt
 
 ### 3. 配置环境变量
 
-DeepReader 需要访问 LLM 服务。请在终端中设置您的 API 密钥。
+DeepReader 需要访问 LLM 服务。请根据您的操作系统设置 API 密钥。
 
+**macOS/Linux:**
 ```bash
 # 以 OpenAI 为例
 export OPENAI_API_KEY="your-openai-api-key"
 
-或者在.env中设置api_key
-
 # 如果您使用其他模型，也请设置相应的环境变量
-# export GOOGLE_API_KEY="..."
+export GOOGLE_API_KEY="your-google-api-key"
 ```
 
-### 4. 运行系统
+**Windows (PowerShell):**
+```powershell
+# 以 OpenAI 为例
+$env:OPENAI_API_KEY="your-openai-api-key"
+
+# 如果您使用其他模型，也请设置相应的环境变量
+$env:GOOGLE_API_KEY="your-google-api-key"
+```
+
+**Windows (CMD):**
+```cmd
+# 以 OpenAI 为例
+set OPENAI_API_KEY=your-openai-api-key
+
+# 如果您使用其他模型，也请设置相应的环境变量
+set GOOGLE_API_KEY=your-google-api-key
+```
+
+**推荐方式：使用 .env 文件**
+在项目根目录创建 `.env` 文件，添加以下内容：
+```
+OPENAI_API_KEY=your-openai-api-key
+GOOGLE_API_KEY=your-google-api-key
+```
+这种方式在所有操作系统上都通用，且更加安全。
+
+### 4. 安装 marker（PDF 处理依赖）
+
+DeepReader 使用 marker 进行高质量的 PDF 转换。请安装：
+
+```bash
+pip install marker-pdf
+```
+
+### 5. 运行系统
 
 确保您已进入 `deepreader` 目录并已激活虚拟环境。
 
 ```bash
 python main.py
 ```
-程序启动后，会提示您输入以下信息：
-1.  **待处理文件的绝对路径**：例如 `../annual_report.pdf`
-2.  **核心探索问题**：您希望通过阅读解决的核心问题，例如"这家公司去年的核心增长动力是什么？"
-3.  **期望的研究角色**：指定 AI Agent 的分析视角，例如"资深财务分析师"。
+
+## 📄 支持的文件格式
+
+DeepReader 支持多种文档格式，系统会自动检测并处理：
+
+### 📋 Markdown 文件 (.md)
+- **处理方式**：直接读取，无需转换
+- **适用场景**：已经是 Markdown 格式的文档
+- **示例**：`/path/to/document.md`
+
+### 📕 PDF 文件 (.pdf)
+- **处理方式**：使用本地 marker 进行高质量转换
+- **转换特性**：
+  - 保留文档结构和格式
+  - 智能识别表格和公式
+  - 禁用图片提取以专注文本内容
+- **输出位置**：在同目录下创建 `文件名/文件名.md`
+- **示例**：`/path/to/annual_report.pdf` → `/path/to/annual_report/annual_report.md`
+
+### 📚 EPUB 电子书 (.epub)
+- **处理方式**：使用 ebooklib 提取文本内容
+- **转换特性**：
+  - 提取所有章节内容
+  - 保留段落结构
+  - 自动清理 HTML 标签
+- **输出位置**：在同目录下创建 `文件名/文件名.md`
+- **示例**：`/path/to/book.epub` → `/path/to/book/book.md`
+
+## 🔄 智能文档处理流程
+
+### 程序启动后的交互流程：
+
+1. **文件路径输入**：输入支持的文件格式路径
+   ```
+   请输入待处理文件的绝对路径: /Users/username/Documents/report.pdf
+   ```
+
+2. **自动格式检测**：系统识别文件类型并选择相应处理器
+
+3. **转换处理**（如需要）：
+   - PDF：调用 marker 进行转换
+   - EPUB：调用 ebooklib 进行提取
+   - Markdown：直接读取
+
+4. **文档清理提示**：
+   ```
+   ⚠️  请检查生成的 Markdown 文件并进行必要的清理：
+      - 删除不相关的内容（如附录、声明等）
+      - 检查格式是否正确
+      - 确保章节结构清晰
+   
+   请完成文件清理后按回车键继续...
+   ```
+
+5. **继续分析**：确认清理完成后，进入 DeepReader 智能分析流程
+
+## 💡 文档质量优化建议
+
+### 🎯 为什么需要人工清理？
+
+**提升 LLM 处理效率**：
+- 🚀 **减少噪音**：移除无关内容可以让 AI 专注于核心信息
+- 📊 **提高准确性**：清晰的结构有助于 AI 更好地理解文档层次
+- ⚡ **节省 Token**：减少不必要的内容可以降低 API 成本
+- 🎯 **增强相关性**：保留与研究问题相关的内容
+
+### 📝 推荐的清理步骤：
+
+**1. 删除冗余部分**
+- 版权声明和法律条款
+- 重复的目录和索引
+- 大量的附录和参考文献
+- 广告和推广内容
+
+**2. 优化格式结构**
+- 确保标题层次清晰（使用 #、##、### 等）
+- 保留重要的表格和数据
+- 修正转换错误的格式
+
+**3. 保留核心内容**
+- 主要章节和论述
+- 关键数据和图表说明
+- 重要的结论和观点
+- 与研究问题相关的案例
+
+**4. 验证文档质量**
+- 检查是否有乱码或格式错误
+- 确认章节完整性
+- 验证重要信息是否保留
+
+### 📋 用户输入信息：
+
+完成文档处理后，系统会提示输入：
+
+1. **核心探索问题**：您希望通过阅读解决的核心问题
+   - 示例：`"这家公司去年的核心增长动力是什么？"`
+   - 示例：`"这本书的主要观点和实践建议是什么？"`
+
+2. **期望的研究角色**：指定 AI Agent 的分析视角
+   - 示例：`"资深财务分析师"`
+   - 示例：`"技术架构师"`
+   - 示例：`"产品经理"`
+
+## 🎬 完整使用示例
+
+以下是一个典型的使用流程示例：
+
+```bash
+# 1. 启动程序
+python main.py
+
+# 2. 输入文件路径
+请输入待处理文件的绝对路径: /Users/username/Documents/annual_report.pdf
+
+# 3. 系统自动检测并转换
+检测到 PDF 文件，开始转换: /Users/username/Documents/annual_report.pdf
+执行命令: marker_single /Users/username/Documents/annual_report.pdf --output_format markdown --output_dir /Users/username/Documents --disable_image_extraction
+
+✅ PDF 转换完成，已保存到: /Users/username/Documents/annual_report/annual_report.md
+
+# 4. 文档清理提示
+⚠️  请检查生成的 Markdown 文件并进行必要的清理：
+   - 删除不相关的内容（如附录、声明等）
+   - 检查格式是否正确
+   - 确保章节结构清晰
+
+请完成文件清理后按回车键继续...
+
+# 5. 输入分析参数
+请输入您的核心探索问题: 这家公司2023年的主要增长驱动因素是什么？
+请输入您期望的研究角色: 资深财务分析师
+
+# 6. 开始智能分析
+--- 任务信息 ---
+文档: annual_report.pdf
+任务ID: a1b2c3d4e5f6...
+
+--- 进入增强型 RAG 持久化节点 ---
+--- 迭代式阅读节点开始 ---
+--- 报告生成节点启动：写作研讨会开始 ---
+
+# 7. 输出结果
+✅ 完整状态已保存: output/20250702_210000_annual_report/final_state.json
+✅ 已生成报告: chapter_summary.md
+✅ 已生成报告: draft_report.md
+✅ 已生成报告: thematic_analysis.md
+✅ 已生成报告: debate_questions.md
+```
+
+---
+
+## ⚠️ 潜在版本冲突与解决方案
+
+由于项目依赖了多个复杂的AI和机器学习库，可能会遇到一些包版本冲突。以下是已知的潜在冲突及解决方案：
+
+### 已知冲突
+
+1. **langchain-google-genai vs google-ai-generativelanguage**
+   ```
+   langchain-google-genai 2.1.6 requires google-ai-generativelanguage>=0.6.18
+   但安装的是 google-ai-generativelanguage 0.6.15
+   ```
+
+2. **marker-pdf vs Pillow**
+   ```
+   marker-pdf 1.8.0 requires Pillow<11.0.0,>=10.1.0
+   但安装的是 pillow 11.3.0
+   ```
+
+3. **surya-ocr vs Pillow**
+   ```
+   surya-ocr 0.14.6 requires pillow<11.0.0,>=10.2.0
+   但安装的是 pillow 11.3.0
+   ```
+
+### 解决方案
+
+这些版本冲突是**非致命性**的，不会影响核心功能的运行。如果遇到问题，可以尝试以下解决方案：
+
+#### 方案1：忽略冲突（推荐）
+大多数情况下，这些小的版本差异不会影响程序运行。如果程序能正常工作，可以忽略这些警告。
+
+#### 方案2：重新创建虚拟环境
+如果遇到运行时错误，可以删除虚拟环境重新安装：
+
+**macOS/Linux:**
+```bash
+rm -rf .venv
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Windows (PowerShell):**
+```powershell
+Remove-Item -Recurse -Force .venv
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+**Windows (CMD):**
+```cmd
+rmdir /s .venv
+python -m venv .venv
+.venv\Scripts\activate.bat
+pip install -r requirements.txt
+```
+
+#### 方案3：手动解决特定冲突
+如果某个特定功能不工作，可以针对性地调整版本：
+```bash
+# 示例：如果 Google AI 功能有问题
+pip install "google-ai-generativelanguage>=0.6.18"
+
+# 示例：如果图像处理有问题
+pip install "pillow>=10.1.0,<11.0.0"
+```
+
+### 检查冲突状态
+可以使用以下命令检查当前的依赖冲突：
+```bash
+pip check
+```
 
 ---
 
@@ -165,7 +585,7 @@ python main.py
 
 ```
 deepreader/
-├── main.py                 # 主程序入口
+├── main.py                 # 主程序入口，集成多格式文档处理
 ├── README.md               # 本文档
 ├── pyproject.toml          # Poetry 依赖与项目配置
 ├── requirements.txt        # pip 依赖文件
@@ -176,10 +596,32 @@ deepreader/
 │   ├── prompts.py          # 所有 Prompt 模板
 │   ├── components/         # 核心组件 (LLM调用, 向量数据库等)
 │   ├── graph/              # LangGraph 的节点与业务逻辑
-│   ├── scraper/            # 文档解析器 (PDF, EPUB, Web)
-│   └── cache/              # 缓存目录 (检查点, 会话信息等)
+│   ├── scraper/            # 文档解析器模块
+│   │   ├── pdf_converter.py      # PDF转换器 (本地marker)
+│   │   ├── epub_converter.py     # EPUB转换器 (ebooklib)
+│   │   ├── web_scraper.py        # 网页抓取器
+│   │   ├── clean_rule.py         # Markdown清洗规则
+│   │   ├── scraper_tools.py      # 通用工具函数
+│   │   └── multipdf.py           # 批量PDF处理
+│   ├── cache/              # 缓存目录 (检查点, 会话信息等)
+│   └── memory/             # 向量存储目录 (FAISS, SQLite)
 └── output/                 # 分析结果输出目录
+    └── [timestamp]_[document]/  # 按时间戳和文档名组织的结果
+        ├── final_state.json     # 完整分析状态
+        ├── chapter_summary.md   # 章节摘要
+        ├── draft_report.md      # 最终分析报告
+        ├── thematic_analysis.md # 主题思想分析
+        └── debate_questions.md  # 批判性问答记录
 ```
+
+### 🔧 核心模块说明
+
+**文档解析器 (backend/scraper/)**
+- `pdf_converter.py`: 使用本地 marker 进行高质量 PDF 转换
+- `epub_converter.py`: 使用 ebooklib 处理 EPUB 电子书
+- `web_scraper.py`: 网页内容抓取和清理
+- `clean_rule.py`: 统一的 Markdown 文本清洗规则
+- `multipdf.py`: 批量处理多个 PDF 文件的工具
 
 ## 📊 输出结果
 

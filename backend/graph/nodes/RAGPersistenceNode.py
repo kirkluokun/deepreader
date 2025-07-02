@@ -33,7 +33,7 @@ async def rag_persistence_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     # 1. 生成基于路径哈希的唯一数据库名
     db_name_hash = hashlib.md5(document_path.encode()).hexdigest()
-    db_base_path = "gpt_researcher/deepreader/backend/memory"
+    db_base_path = "backend/memory"
     # 我们只需要 db_name 传递给 vector_store，它会自动处理路径和扩展名
     
     # 2. 检查缓存是否存在

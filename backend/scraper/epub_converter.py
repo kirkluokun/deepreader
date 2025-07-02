@@ -10,15 +10,17 @@ from ebooklib import epub
 from bs4 import BeautifulSoup
 import logging
 from pathlib import Path
-from gpt_researcher.deepreader.backend.scraper.clean_rule import clean_markdown_text
+from typing import Optional
+from .clean_rule import clean_markdown_text
 import sys
 
-def convert_epub_to_markdown(file_path: str) -> str:
+def convert_epub_to_markdown(file_path: str, output_path: Optional[str] = None) -> str:
     """
     将 EPUB 文件转换为干净的 Markdown 文本。
     
     Args:
         file_path (str): EPUB 文件的路径。
+        output_path (Optional[str]): 可选的输出路径。如果未提供，将输出到与EPUB同目录。
         
     Returns:
         str: 转换后的 Markdown 文本。
@@ -40,7 +42,19 @@ def convert_epub_to_markdown(file_path: str) -> str:
         # 使用统一的清洗函数进行深度清洗
         cleaned_markdown = clean_markdown_text(raw_markdown)
         
-        logging.info(f"EPUB 文件 '{file_path}' 已成功转换为 Markdown 并清洗。")
+        # 保存到指定路径或默认路径（与PDF保持一致，输出到子文件夹）
+        file_path_obj = Path(file_path)
+        if output_path:
+            output_file = Path(output_path)
+        else:
+            # 创建与文件名同名的子文件夹，然后在里面生成 markdown 文件
+            output_dir = file_path_obj.parent / file_path_obj.stem
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_file = output_dir / f"{file_path_obj.stem}.md"
+        
+        output_file.write_text(cleaned_markdown, encoding='utf-8')
+        logging.info(f"EPUB 文件 '{file_path}' 已成功转换为 Markdown 并保存到: {output_file}")
+        
         return cleaned_markdown
 
     except Exception as e:
@@ -49,11 +63,14 @@ def convert_epub_to_markdown(file_path: str) -> str:
 
 if __name__ == "__main__":
     # 配置日志记录以进行测试
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(
+        level=logging.INFO, 
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
 
     # 从命令行参数获取 EPUB 文件路径
     if len(sys.argv) < 2:
-        print("用法: python gpt_researcher/deepreader/backend/scraper/epub_converter.py <epub文件的绝对路径>")
+        print("用法: python epub_converter.py <epub文件路径>")
         sys.exit(1)
     
     test_epub_path = sys.argv[1]
@@ -67,13 +84,10 @@ if __name__ == "__main__":
             markdown_output = convert_epub_to_markdown(test_epub_path)
             logging.info("EPUB 转换和清洗成功完成。")
             
-            # 生成与源文件同名、同目录的 .md 文件路径
-            output_file = Path(test_epub_path).with_suffix('.md')
-            output_file.write_text(markdown_output, encoding='utf-8')
-            
-            logging.info(f"转换后的 Markdown (前500字符):\n---")
+            logging.info("转换后的 Markdown (前500字符):")
+            print("---")
             print(markdown_output[:500])
-            logging.info(f"---\n完整输出已保存到: {output_file.resolve()}")
+            print("---")
             
         except Exception as e:
             logging.error(f"在测试转换过程中发生错误: {e}", exc_info=True)

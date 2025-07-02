@@ -15,20 +15,20 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
 
-from gpt_researcher.deepreader.backend.scraper.pdf_converter import (
+from backend.scraper.pdf_converter import (
     convert_pdf_to_markdown,
 )
-from gpt_researcher.deepreader.backend.scraper.epub_converter import (
+from backend.scraper.epub_converter import (
     convert_epub_to_markdown,
 )
-from gpt_researcher.deepreader.backend.scraper.web_scraper import (
+from backend.scraper.web_scraper import (
     scrape_urls_to_markdown,
 )
-from gpt_researcher.deepreader.backend.components.llm import call_smart_llm
-from gpt_researcher.deepreader.backend.config import deep_reader_config
+from backend.components.llm import call_smart_llm
+from backend.config import deep_reader_config
 from thefuzz import fuzz
 from json_repair import loads as json_repair_loads
-from gpt_researcher.deepreader.backend.graph.actions.rag_actions import chunk_document
+from backend.graph.actions.rag_actions import chunk_document
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

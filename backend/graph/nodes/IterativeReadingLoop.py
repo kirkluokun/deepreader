@@ -10,9 +10,9 @@ import asyncio
 import json
 from typing import Dict, Any
 
-from gpt_researcher.deepreader.backend.read_state import DeepReaderState
-from gpt_researcher.deepreader.backend.graph.actions.docparsing_actions import structure_document_action
-from gpt_researcher.deepreader.backend.graph.actions.reading_knowledge_actions import (
+from backend.read_state import DeepReaderState
+from backend.graph.actions.docparsing_actions import structure_document_action
+from backend.graph.actions.reading_knowledge_actions import (
     reading_agent_action,
     summary_agent_action,
     key_info_agent_action,
@@ -83,7 +83,11 @@ async def iterative_reading_node(state: DeepReaderState) -> Dict[str, Any]:
             
     if not next_snippet:
         logging.info("所有片段已阅读完毕。")
-        return {"reading_completed": True}
+        return {
+            "reading_completed": True,
+            "reading_snippets": state["reading_snippets"],  # 保持现有的片段状态
+            "table_of_contents": state.get("table_of_contents"),  # 保持现有的目录状态
+        }
         
     logging.info(f"正在阅读片段 {snippet_index + 1}/{len(state['reading_snippets'])}")
     current_chunk = next_snippet.get("content", "")

@@ -1,8 +1,8 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter, Language
-from gpt_researcher.deepreader.backend.components.vector_store import DeepReaderVectorStore
+from backend.components.vector_store import DeepReaderVectorStore
 from typing import List, Dict, Any
-from gpt_researcher.deepreader.backend.prompts import REVIEWER_AGENT_PROMPT
-from gpt_researcher.deepreader.backend.components.llm import call_fast_llm, call_search_llm
+from backend.prompts import REVIEWER_AGENT_PROMPT
+from backend.components.llm import call_fast_llm
 import logging
 import json
 from json_repair import loads as json_repair_loads

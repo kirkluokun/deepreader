@@ -21,7 +21,7 @@ class DeepReaderVectorStore(VectorStore):
             self.faiss_path = f"{db_path}.faiss"
         elif db_name:
             # 否则，使用旧的逻辑，保持向后兼容
-            base_path = "gpt_researcher/deepreader/backend/memory"
+            base_path = "backend/memory"
             self.db_path = os.path.join(base_path, f"{db_name}.sqlite")
             self.faiss_path = os.path.join(base_path, f"{db_name}.faiss")
         else:

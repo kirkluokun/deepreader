@@ -16,6 +16,10 @@ from datetime import datetime
 from pprint import pprint
 from typing import Dict, Any, List, Optional
 
+# 加载环境变量
+from dotenv import load_dotenv
+load_dotenv()
+
 # --- 1. 初始化环境 ---
 def setup_environment():
     """设置工作目录和 sys.path，确保脚本从 dynamic-gptr 根目录运行"""
@@ -37,16 +41,16 @@ def setup_environment():
     if str(workspace_root) not in sys.path:
         sys.path.insert(0, str(workspace_root))
 
-setup_environment()
+# setup_environment()
 
 # --- 2. 导入必要的模块 ---
-from gpt_researcher.deepreader.backend.read_graph import create_deepreader_graph
-from gpt_researcher.deepreader.backend.read_state import DeepReaderState
+from backend.read_graph import create_deepreader_graph
+from backend.read_state import DeepReaderState
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 # --- 3. 定义常量 ---
-BASE_OUTPUT_DIR = Path("gpt_researcher/deepreader/output")
-CACHE_DIR = Path("gpt_researcher/deepreader/backend/cache")
+BASE_OUTPUT_DIR = Path("output")
+CACHE_DIR = Path("backend/cache")
 SESSION_CACHE_FILE = CACHE_DIR / "session_cache.json"
 CHECKPOINTER_DB_PATH = CACHE_DIR / "checkpoints.sqlite"
 
@@ -90,6 +94,133 @@ def get_user_inputs(defaults: Dict[str, str]) -> Dict[str, str]:
         "user_core_question": user_core_question,
         "research_role": research_role
     }
+
+
+def convert_document_to_markdown(file_path: str) -> str:
+    """
+    根据文件类型将文档转换为 Markdown 格式
+    
+    Args:
+        file_path: 文档文件路径
+        
+    Returns:
+        转换后的 Markdown 内容
+    """
+    from backend.scraper.pdf_converter import convert_pdf_to_markdown
+    from backend.scraper.epub_converter import convert_epub_to_markdown
+    
+    file_path_obj = Path(file_path)
+    file_ext = file_path_obj.suffix.lower()
+    
+    if file_ext == '.md':
+        # 如果已经是 Markdown 文件，直接读取
+        logging.info(f"检测到 Markdown 文件，直接读取: {file_path}")
+        return file_path_obj.read_text(encoding='utf-8')
+    
+    elif file_ext == '.pdf':
+        # 转换 PDF 文件
+        logging.info(f"检测到 PDF 文件，开始转换: {file_path}")
+        
+        # marker 会创建一个以文件名命名的目录，然后在里面生成 markdown 文件
+        expected_md_dir = file_path_obj.parent / file_path_obj.stem
+        expected_md_path = expected_md_dir / f"{file_path_obj.stem}.md"
+        
+        # 检查是否已存在转换后的文件
+        if expected_md_path.exists():
+            choice = input(f"\\n发现已存在的 Markdown 文件: {expected_md_path}\\n是否使用现有文件? (Y/n): ").lower()
+            if choice == 'y' or choice == '':
+                return expected_md_path.read_text(encoding='utf-8')
+        
+        # 执行转换
+        markdown_content = convert_pdf_to_markdown(file_path)
+        
+        # 查找实际生成的 markdown 文件
+        actual_md_path = None
+        if expected_md_path.exists():
+            actual_md_path = expected_md_path
+        else:
+            # 如果预期路径不存在，搜索可能的位置
+            possible_paths = [
+                file_path_obj.with_suffix('.md'),  # 同目录下
+                expected_md_path,  # 子目录中
+            ]
+            
+            # 搜索所有可能的 .md 文件
+            for search_dir in [file_path_obj.parent, expected_md_dir]:
+                if search_dir.exists():
+                    for md_file in search_dir.glob("*.md"):
+                        if md_file.stem == file_path_obj.stem:
+                            actual_md_path = md_file
+                            break
+                if actual_md_path:
+                    break
+        
+        if not actual_md_path or not actual_md_path.exists():
+            raise FileNotFoundError(f"未找到转换后的 Markdown 文件。预期位置: {expected_md_path}")
+        
+        print(f"\\n✅ PDF 转换完成，已保存到: {actual_md_path}")
+        
+        # 提示用户检查和清理
+        print("\\n⚠️  请检查生成的 Markdown 文件并进行必要的清理：")
+        print("   - 删除不相关的内容（如附录、声明等）")
+        print("   - 检查格式是否正确")
+        print("   - 确保章节结构清晰")
+        
+        input("\\n请完成文件清理后按回车键继续...")
+        
+        # 重新读取可能被用户修改的文件
+        return actual_md_path.read_text(encoding='utf-8')
+        
+    elif file_ext == '.epub':
+        # 转换 EPUB 文件
+        logging.info(f"检测到 EPUB 文件，开始转换: {file_path}")
+        
+        # EPUB 也输出到子文件夹，与 PDF 保持一致
+        expected_md_dir = file_path_obj.parent / file_path_obj.stem
+        expected_md_path = expected_md_dir / f"{file_path_obj.stem}.md"
+        
+        # 检查是否已存在转换后的文件
+        if expected_md_path.exists():
+            choice = input(f"\\n发现已存在的 Markdown 文件: {expected_md_path}\\n是否使用现有文件? (Y/n): ").lower()
+            if choice == 'y' or choice == '':
+                return expected_md_path.read_text(encoding='utf-8')
+        
+        # 执行转换
+        markdown_content = convert_epub_to_markdown(file_path)
+        
+        # 查找实际生成的 markdown 文件
+        actual_md_path = None
+        if expected_md_path.exists():
+            actual_md_path = expected_md_path
+        else:
+            # 如果预期路径不存在，搜索可能的位置
+            for search_dir in [file_path_obj.parent, expected_md_dir]:
+                if search_dir.exists():
+                    for md_file in search_dir.glob("*.md"):
+                        if md_file.stem == file_path_obj.stem:
+                            actual_md_path = md_file
+                            break
+                if actual_md_path:
+                    break
+        
+        if not actual_md_path or not actual_md_path.exists():
+            raise FileNotFoundError(f"未找到转换后的 Markdown 文件。预期位置: {expected_md_path}")
+        
+        print(f"\\n✅ EPUB 转换完成，已保存到: {actual_md_path}")
+        
+        # 提示用户检查和清理
+        print("\\n⚠️  请检查生成的 Markdown 文件并进行必要的清理：")
+        print("   - 删除不相关的内容（如目录、版权信息等）")
+        print("   - 检查格式是否正确")
+        print("   - 确保章节结构清晰")
+        
+        input("\\n请完成文件清理后按回车键继续...")
+        
+        # 重新读取可能被用户修改的文件
+        return actual_md_path.read_text(encoding='utf-8')
+        
+    else:
+        raise ValueError(f"不支持的文件类型: {file_ext}。支持的格式: .md, .pdf, .epub")
 
 # --- 6. 结果格式化与保存 ---
 def _format_summaries_to_md(summaries: Dict[str, str]) -> str:
@@ -206,13 +337,12 @@ async def main():
     
     document_path = Path(user_inputs["document_path"])
     
-    # 提前读取文件内容，以确保初始状态完整
-    raw_markdown_content = ""
+    # 根据文件类型进行转换处理
     try:
-        raw_markdown_content = document_path.read_text(encoding='utf-8')
-        logging.info(f"✅ 成功预加载文档: {document_path.name}")
+        raw_markdown_content = convert_document_to_markdown(str(document_path))
+        logging.info(f"✅ 文档处理完成，内容长度: {len(raw_markdown_content)}")
     except Exception as e:
-        logging.error(f"❌ 无法读取输入文件 '{document_path}': {e}")
+        logging.error(f"❌ 文档转换失败 '{document_path}': {e}")
         return
 
     # 为每个文档创建一个唯一的线程ID
@@ -294,6 +424,7 @@ async def main():
                 final_keys=None,
                 final_report_outline=None,
                 draft_report=None,
+                reading_completed=None,
                 error=None
             )
             async for event in app.astream(initial_state, config=config):
