@@ -8,6 +8,7 @@
 import logging
 import os
 import hashlib
+from pathlib import Path
 from typing import Dict, Any
 
 from ..actions import rag_actions, docparsing_actions
@@ -33,15 +34,18 @@ async def rag_persistence_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     # 1. 生成基于路径哈希的唯一数据库名
     db_name_hash = hashlib.md5(document_path.encode()).hexdigest()
-    db_base_path = "backend/memory"
+    # 基于当前文件路径计算 deepreader 根目录
+    current_file = Path(__file__).resolve()
+    deepreader_root = current_file.parent.parent.parent.parent  # backend/graph/nodes/../../../.. -> deepreader/
+    db_base_path = deepreader_root / "backend/memory"
     # 我们只需要 db_name 传递给 vector_store，它会自动处理路径和扩展名
     
     # 2. 检查缓存是否存在
     # vector_store 内部会判断文件是否存在，但我们在这里提前检查可以避免不必要的实例化
-    faiss_path = os.path.join(db_base_path, f"{db_name_hash}.faiss")
-    sqlite_path = os.path.join(db_base_path, f"{db_name_hash}.sqlite")
+    faiss_path = db_base_path / f"{db_name_hash}.faiss"
+    sqlite_path = db_base_path / f"{db_name_hash}.sqlite"
 
-    if os.path.exists(faiss_path) and os.path.exists(sqlite_path):
+    if faiss_path.exists() and sqlite_path.exists():
         logging.info(f"发现文档 '{document_path}' 的现有数据库 '{db_name_hash}'。跳过处理。")
         return {
             "db_name": db_name_hash,

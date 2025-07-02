@@ -3,6 +3,7 @@ import sqlite3
 import numpy as np
 import json
 import os
+from pathlib import Path
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.vectorstores import VectorStore
 from langchain_core.documents import Document
@@ -21,13 +22,18 @@ class DeepReaderVectorStore(VectorStore):
             self.faiss_path = f"{db_path}.faiss"
         elif db_name:
             # 否则，使用旧的逻辑，保持向后兼容
-            base_path = "backend/memory"
-            self.db_path = os.path.join(base_path, f"{db_name}.sqlite")
-            self.faiss_path = os.path.join(base_path, f"{db_name}.faiss")
+            # 基于当前文件路径计算 deepreader 根目录
+            current_file = Path(__file__).resolve()
+            deepreader_root = current_file.parent.parent.parent  # backend/components/../.. -> deepreader/
+            base_path = deepreader_root / "backend/memory"
+            self.db_path = str(base_path / f"{db_name}.sqlite")
+            self.faiss_path = str(base_path / f"{db_name}.faiss")
         else:
             raise ValueError("必须提供 db_name 或 db_path")
         
-        os.makedirs(base_path, exist_ok=True)
+        # 确保目录存在
+        if hasattr(self, 'db_path'):
+            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
         # 2. 初始化 Embedding 模型
         self.embedding_model = OpenAIEmbeddings(model=embedding_model_name, api_key=os.environ.get("OPENAI_API_KEY"))

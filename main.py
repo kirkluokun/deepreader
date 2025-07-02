@@ -5,6 +5,8 @@
 @time: 2025-06-30 11:00
 @desc: DeepReader Agent 的主程序入口
 """
+
+
 import asyncio
 import os
 import sys
@@ -49,8 +51,10 @@ from backend.read_state import DeepReaderState
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 # --- 3. 定义常量 ---
-BASE_OUTPUT_DIR = Path("output")
-CACHE_DIR = Path("backend/cache")
+# 基于 main.py 文件所在目录定义路径，确保输出目录正确
+SCRIPT_DIR = Path(__file__).parent.resolve()
+BASE_OUTPUT_DIR = SCRIPT_DIR / "output"
+CACHE_DIR = SCRIPT_DIR / "backend/cache" 
 SESSION_CACHE_FILE = CACHE_DIR / "session_cache.json"
 CHECKPOINTER_DB_PATH = CACHE_DIR / "checkpoints.sqlite"
 

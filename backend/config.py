@@ -22,11 +22,11 @@ class DeepReaderConfig:
     
     # Smart LLM - 用于需要较高质量的文本生成任务
     SMART_LLM_PROVIDER: str = "google_genai"
-    SMART_LLM_MODEL: str = "gemini-2.0-flash"
+    SMART_LLM_MODEL: str = "gemini-2.5-flash"
     
     # Strategic LLM - 用于最复杂、最重要的任务
     STRATEGIC_LLM_PROVIDER: str = "google_genai"
-    STRATEGIC_LLM_MODEL: str = "gemini-2.0-flash"
+    STRATEGIC_LLM_MODEL: str = "gemini-2.5-pro"
     
     # Search LLM - 用于需要联网搜索的任务
     SEARCH_LLM_PROVIDER: str = "google_genai"
@@ -46,6 +46,7 @@ class DeepReaderConfig:
     PARSING_STRATEGY: Literal['chapter', 'snippet'] = 'snippet'
 
     # 当 PARSING_STRATEGY 设置为 'snippet' 时，每个文本片段的目标字数。
+    # 这个数值越大，阅读速度越快，但是阅读精度可能有一定程度下降。类似于“一目十行”速度越快。
     SNIPPET_CHUNK_SIZE: int = 10000
 
     # =================================================================
