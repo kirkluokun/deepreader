@@ -1,0 +1,87 @@
+[tool.poetry]
+name = "finai-deepreader"
+version = "0.1.0"
+description = "A standalone component for deep, iterative reading and analysis of complex documents."
+authors = ["luokunkirk"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "backend"}]
+
+[tool.poetry.dependencies]
+python = ">=3.12"
+streamlit = "^1.33.0"
+aiofiles = ">=23.2.1"
+arxiv = ">=2.0.0"
+beautifulsoup4 = ">=4.12.2"
+colorama = ">=0.4.6"
+duckduckgo_search = ">=4.1.1"
+fastapi = ">=0.104.1"
+google-genai = "*"
+htmldocx = "^0.0.6"
+jinja2 = ">=3.1.2"
+json-repair = "^0.29.8"
+json5 = "^0.10.0"
+langchain = "*"
+langchain_community = "^0.3.17"
+langchain-google-genai = "*"
+langchain-openai = "*"
+langgraph = ">=0.2.73,<0.3"
+loguru = "^0.7.2"
+lxml = { version = ">=4.9.2", extras = ["html_clean"] }
+markdown = ">=3.5.1"
+md2pdf = ">=1.0.1"
+mistune = "^3.0.2"
+pydantic = ">=2.5.1"
+PyMuPDF = ">=1.23.6"
+python-docx = "^1.1.0"
+python-dotenv = ">=1.0.0"
+python-multipart = ">=0.0.6"
+pyyaml = ">=6.0.1"
+requests = ">=2.31.0"
+SQLAlchemy = ">=2.0.28"
+tiktoken = ">=0.7.0"
+unstructured = ">=0.13"
+uvicorn = ">=0.24.0.post1"
+websockets = "^13.1"
+langgraph-checkpoint-sqlite = "^2.0.0"
+streamlit-autorefresh = "^1.0.1"
+streamlit-lottie = "^0.0.5"
+pytest-dotenv = "^0.5.2"
+exa-py = "^1.0.5"
+crawl4ai = "^0.6.0"
+firecrawl-py = "*"
+crewai = "^0.130.0"
+typer = {extras = ["rich"], version = "^0.12.3"}
+marker-pdf = "^1.7.5"
+ebooklib = "^0.18"
+markdownify = "0.13.1"
+faiss-cpu = "^1.11.0"
+openai = "^1.91.0"
+aiosqlite = "^0.21.0"
+thefuzz = "^0.22.1"
+python-levenshtein = "^0.27.1"
+playwright = "*"
+gpt-researcher = "*"
+logging = "*"
+
+
+[tool.poetry.group.dev.dependencies]
+types-aiofiles = ">=24.1.0"
+types-beautifulsoup4 = ">=4.12.0"
+types-colorama = ">=0.4.15"
+types-markdown = ">=3.8.0"
+types-requests = ">=2.32.0"
+pytest = "^8.4.0"
+pytest-asyncio = "^1.0.0"
+pytest-dotenv = "^0.5.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+addopts = "-v"
+testpaths = ["test"]
+python_files = "test_*.py"
+asyncio_fixture_loop_scope = "function"
