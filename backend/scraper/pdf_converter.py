@@ -35,7 +35,7 @@ def convert_pdf_to_markdown(pdf_path: str, output_path: Optional[str] = None) ->
         raise FileNotFoundError(f"错误：未在指定路径找到 PDF 文件: {pdf_path}")
 
     try:
-        # 确定输出目录
+        # 确定输出目录 - marker 会在PDF文件的父目录下创建同名子文件夹
         if output_path:
             output_dir = Path(output_path).parent
         else:
@@ -68,20 +68,49 @@ def convert_pdf_to_markdown(pdf_path: str, output_path: Optional[str] = None) ->
         if result.stderr:
             logging.warning(f"marker 警告: {result.stderr}")
 
+        # marker 会创建一个以文件名命名的子目录，然后在里面生成 markdown 文件
+        expected_md_dir = output_dir / pdf_file.stem
+        expected_md_file = expected_md_dir / f"{pdf_file.stem}.md"
+        
         # 查找生成的 markdown 文件
-        expected_md_file = output_dir / f"{pdf_file.stem}.md"
-        if not expected_md_file.exists():
-            # 如果默认名称不存在，尝试查找任何新生成的 .md 文件
-            md_files = list(output_dir.glob("*.md"))
-            if md_files:
-                expected_md_file = md_files[-1]  # 使用最新的
-                logging.info(f"使用找到的 markdown 文件: {expected_md_file}")
+        actual_md_file = None
+        if expected_md_file.exists():
+            actual_md_file = expected_md_file
+            logging.info(f"找到预期路径的 Markdown 文件: {actual_md_file}")
+        else:
+            # 搜索可能的位置
+            search_locations = [
+                output_dir / f"{pdf_file.stem}.md",  # 直接在输出目录
+                expected_md_dir,  # 子目录中
+                output_dir,  # 父目录中
+            ]
+            
+            for search_dir in search_locations:
+                if search_dir.is_file() and search_dir.suffix == '.md':
+                    actual_md_file = search_dir
+                    break
+                elif search_dir.is_dir():
+                    # 在目录中查找 .md 文件
+                    md_files = list(search_dir.glob("*.md"))
+                    if md_files:
+                        # 优先选择与PDF文件名匹配的
+                        for md_file in md_files:
+                            if md_file.stem == pdf_file.stem:
+                                actual_md_file = md_file
+                                break
+                        # 如果没有匹配的，使用第一个
+                        if not actual_md_file:
+                            actual_md_file = md_files[0]
+                        break
+            
+            if actual_md_file:
+                logging.info(f"在搜索路径中找到 Markdown 文件: {actual_md_file}")
             else:
-                raise FileNotFoundError(f"未找到生成的 markdown 文件: {expected_md_file}")
-
+                raise FileNotFoundError(f"未找到生成的 markdown 文件。预期位置: {expected_md_file}")
+        
         # 读取生成的 markdown 文件
-        markdown_text = expected_md_file.read_text(encoding='utf-8')
-        logging.info(f"成功读取生成的 Markdown 文件。内容长度: {len(markdown_text)}")
+        markdown_text = actual_md_file.read_text(encoding='utf-8')
+        logging.info(f"成功读取生成的 Markdown 文件: {actual_md_file}，内容长度: {len(markdown_text)}")
 
         # 清洗转换后的文本
         cleaned_text = clean_markdown_text(markdown_text)
@@ -97,8 +126,8 @@ def convert_pdf_to_markdown(pdf_path: str, output_path: Optional[str] = None) ->
             logging.info(f"清洗后的 Markdown 已保存到: {output_file}")
         else:
             # 更新原始生成的文件
-            expected_md_file.write_text(cleaned_text, encoding='utf-8')
-            logging.info(f"清洗后的 Markdown 已更新到: {expected_md_file}")
+            actual_md_file.write_text(cleaned_text, encoding='utf-8')
+            logging.info(f"清洗后的 Markdown 已更新到: {actual_md_file}")
 
         return cleaned_text
 

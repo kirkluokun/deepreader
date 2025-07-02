@@ -138,22 +138,40 @@ def convert_document_to_markdown(file_path: str) -> str:
         actual_md_path = None
         if expected_md_path.exists():
             actual_md_path = expected_md_path
+            logging.info(f"找到预期路径的 Markdown 文件: {actual_md_path}")
         else:
             # 如果预期路径不存在，搜索可能的位置
-            possible_paths = [
-                file_path_obj.with_suffix('.md'),  # 同目录下
-                expected_md_path,  # 子目录中
+            search_locations = [
+                file_path_obj.with_suffix('.md'),  # 同目录下的直接替换
+                expected_md_path,  # 子目录中的预期位置
+                file_path_obj.parent,  # 父目录中搜索
+                expected_md_dir,  # 子目录中搜索
             ]
             
-            # 搜索所有可能的 .md 文件
-            for search_dir in [file_path_obj.parent, expected_md_dir]:
-                if search_dir.exists():
-                    for md_file in search_dir.glob("*.md"):
-                        if md_file.stem == file_path_obj.stem:
-                            actual_md_path = md_file
-                            break
-                if actual_md_path:
-                    break
+            logging.info(f"在预期路径未找到文件，开始搜索其他位置...")
+            
+            for search_location in search_locations:
+                if search_location.is_file() and search_location.suffix == '.md':
+                    # 直接是一个 .md 文件
+                    if search_location.stem == file_path_obj.stem:
+                        actual_md_path = search_location
+                        logging.info(f"找到匹配的 Markdown 文件: {actual_md_path}")
+                        break
+                elif search_location.is_dir():
+                    # 在目录中搜索 .md 文件
+                    md_files = list(search_location.glob("*.md"))
+                    if md_files:
+                        # 优先选择与原文件名匹配的
+                        for md_file in md_files:
+                            if md_file.stem == file_path_obj.stem:
+                                actual_md_path = md_file
+                                logging.info(f"在目录 {search_location} 中找到匹配的 Markdown 文件: {actual_md_path}")
+                                break
+                        # 如果没有完全匹配的，使用第一个 .md 文件
+                        if not actual_md_path and md_files:
+                            actual_md_path = md_files[0]
+                            logging.info(f"在目录 {search_location} 中找到 Markdown 文件（非完全匹配）: {actual_md_path}")
+                        break
         
         if not actual_md_path or not actual_md_path.exists():
             raise FileNotFoundError(f"未找到转换后的 Markdown 文件。预期位置: {expected_md_path}")
@@ -188,20 +206,44 @@ def convert_document_to_markdown(file_path: str) -> str:
         # 执行转换
         markdown_content = convert_epub_to_markdown(file_path)
         
-        # 查找实际生成的 markdown 文件
+        # 查找实际生成的 markdown 文件  
         actual_md_path = None
         if expected_md_path.exists():
             actual_md_path = expected_md_path
+            logging.info(f"找到预期路径的 Markdown 文件: {actual_md_path}")
         else:
             # 如果预期路径不存在，搜索可能的位置
-            for search_dir in [file_path_obj.parent, expected_md_dir]:
-                if search_dir.exists():
-                    for md_file in search_dir.glob("*.md"):
-                        if md_file.stem == file_path_obj.stem:
-                            actual_md_path = md_file
-                            break
-                if actual_md_path:
-                    break
+            search_locations = [
+                file_path_obj.with_suffix('.md'),  # 同目录下的直接替换
+                expected_md_path,  # 子目录中的预期位置
+                file_path_obj.parent,  # 父目录中搜索
+                expected_md_dir,  # 子目录中搜索
+            ]
+            
+            logging.info(f"在预期路径未找到文件，开始搜索其他位置...")
+            
+            for search_location in search_locations:
+                if search_location.is_file() and search_location.suffix == '.md':
+                    # 直接是一个 .md 文件
+                    if search_location.stem == file_path_obj.stem:
+                        actual_md_path = search_location
+                        logging.info(f"找到匹配的 Markdown 文件: {actual_md_path}")
+                        break
+                elif search_location.is_dir():
+                    # 在目录中搜索 .md 文件
+                    md_files = list(search_location.glob("*.md"))
+                    if md_files:
+                        # 优先选择与原文件名匹配的
+                        for md_file in md_files:
+                            if md_file.stem == file_path_obj.stem:
+                                actual_md_path = md_file
+                                logging.info(f"在目录 {search_location} 中找到匹配的 Markdown 文件: {actual_md_path}")
+                                break
+                        # 如果没有完全匹配的，使用第一个 .md 文件
+                        if not actual_md_path and md_files:
+                            actual_md_path = md_files[0]
+                            logging.info(f"在目录 {search_location} 中找到 Markdown 文件（非完全匹配）: {actual_md_path}")
+                        break
         
         if not actual_md_path or not actual_md_path.exists():
             raise FileNotFoundError(f"未找到转换后的 Markdown 文件。预期位置: {expected_md_path}")
