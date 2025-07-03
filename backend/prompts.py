@@ -269,7 +269,7 @@ As a senior Analyst and insightful Writer, your task is to write a single, speci
 0.  **Output Language Must be in Chinese.**
 1.  **Go Beyond Surface-Level Summary:** Your value lies in providing insight. Connect different pieces of information, highlight underlying themes, and explain the significance of the facts you present. Create a narrative that is both informative and thought-provoking.
 2.  **Smart, Evidence-Based Analysis:** Your analysis and viewpoints must be strongly supported by evidence. You MUST proactively and selectively cite the most critical data or assertions from the **"Directly Relevant Key Information"** to substantiate your core points. If there is no necessary data to support a point, do not force a citation. Use the RAG context for broader arguments.
-3.  **Use Markdown Tables for Clarity:** When you need to present multiple related data points (e.g., from **"Directly Relevant Key Information"**) to support a single argument, you MUST format them into a standard Markdown table for better readability.
+3.  **Use Markdown Tables for Clarity:** When you need to present multiple related data points (e.g., from **"Directly Relevant Key Information"**) to support a single argument, you MUST format them into a standard Markdown table for better readability. 
 4.  **Clarity and Logic:** Your writing must be logical, clear, and easy to understand for a general audience.
 5.  **Cohesion:** Pay close attention to the "Summary of All Previously Written Parts" to avoid repetition and ensure your section connects logically with the preceding content.
 
@@ -307,9 +307,16 @@ Remember to weave in specific data and examples to make your writing compelling 
 You MUST respond with a single, valid JSON object. Do not include any text outside the JSON object.
 The "written_part" field MUST be a list of strings, where each string is a paragraph.
 Output Language Must be in Chinese.
+
+**IMPORTANT TABLE FORMATTING REMINDER:**
+When including Markdown tables in your written content, ensure:
+- NO empty lines between table rows
+- Each row properly formatted: | Column 1 | Column 2 | Column 3 |
+- Tables are complete and well-structured
+
 {{
   "written_part": [
-      "First, directly state the main conclusion for this section. Then, use evidence, data, or compelling viewpoints from the provided context to support and elaborate on this conclusion. You may quote or reference particularly insightful points from the original text. Focus on clear logic and strong supporting arguments. When presenting data or multiple related points, format them in standard Markdown tables for better readability and clarity."
+      "First, directly state the main conclusion for this section. Then, use evidence, data, or compelling viewpoints from the provided context to support and elaborate on this conclusion. You may quote or reference particularly insightful points from the original text. Focus on clear logic and strong supporting arguments. When presenting data or multiple related points, format them in standard Markdown tables for better readability and clarity. ENSURE tables have no empty lines between rows."
   ],
   "part_summary": "A concise, one-paragraph summary of the content you just wrote in the 'written_part' field. This will serve as context for the next writer.以及引用了哪些数据也要注明。"
 }}
@@ -364,10 +371,25 @@ From the provided list of ALL available key information (data points and asserti
 4.  **List of ALL Available Key Information (Data and Assertions):**
     {all_key_info_list}
 
+**CRITICAL INPUT FORMAT UNDERSTANDING:**
+The "List of ALL Available Key Information" above is a JSON array of objects. Each object has this structure:
+{{
+  "data_name": "具体的数据项名称",
+  "description": "该数据项的详细描述和意义"
+}}
+
+You need to read both the "data_name" and "description" to understand what each data item contains, then select the most relevant ones.
+
 **Output Format:**
-You MUST respond with a single, valid JSON array of strings. Each string must be one of the exact "data_name" values from the provided list. Select only the most relevant items. If no items are relevant, return an empty list.
+You MUST respond with a single, valid JSON array of strings. Each string must be one of the exact "data_name" field values extracted from the objects in the provided list. 
+
+IMPORTANT: You are selecting the "data_name" values (strings), NOT the entire objects.
+
+If no items are relevant, return an empty array: []
+
+Example output:
 [
-  "Relevant data_name 1",
-  "Relevant data_name 2"
+  "政策维度分析表",
+  "市场预期数据"
 ]
 """

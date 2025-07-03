@@ -269,6 +269,62 @@ def convert_document_to_markdown(file_path: str) -> str:
         raise ValueError(f"不支持的文件类型: {file_ext}。支持的格式: .md, .pdf, .epub")
 
 # --- 6. 结果格式化与保存 ---
+def _clean_markdown_tables(content: str) -> str:
+    """
+    清理markdown内容中表格的格式问题，移除表格行之间的空行
+    
+    Args:
+        content: 原始markdown内容
+        
+    Returns:
+        清理后的markdown内容
+    """
+    if not content:
+        return content
+    
+    lines = content.split('\n')
+    cleaned_lines = []
+    in_table = False
+    
+    for i, line in enumerate(lines):
+        line_stripped = line.strip()
+        
+        # 检查是否是表格行
+        is_table_row = line_stripped and line_stripped.startswith('|') and line_stripped.endswith('|')
+        
+        if is_table_row:
+            # 这是表格行
+            if not in_table:
+                # 进入表格状态
+                in_table = True
+            cleaned_lines.append(line)
+        elif in_table:
+            # 之前在表格中，现在不是表格行
+            if line_stripped:
+                # 非空行，表格结束
+                in_table = False
+                cleaned_lines.append(line)
+            else:
+                # 空行，检查下一行是否还是表格行
+                next_is_table = False
+                for j in range(i + 1, len(lines)):
+                    next_line = lines[j].strip()
+                    if next_line:
+                        if next_line.startswith('|') and next_line.endswith('|'):
+                            next_is_table = True
+                        break
+                
+                if not next_is_table:
+                    # 下一个非空行不是表格行，表格结束，保留空行
+                    in_table = False
+                    cleaned_lines.append(line)
+                # 如果下一个非空行还是表格行，则跳过当前空行（不添加到cleaned_lines）
+        else:
+            # 不在表格中，正常添加行
+            cleaned_lines.append(line)
+    
+    return '\n'.join(cleaned_lines)
+
 def _format_summaries_to_md(summaries: Dict[str, str]) -> str:
     """格式化章节摘要为 Markdown"""
     if not summaries:
@@ -321,7 +377,10 @@ def _format_draft_report_to_md(report_data: List[Dict[str, Any]]) -> str:
             
             written_content = section.get("written_content")
             if written_content and isinstance(written_content, list):
-                md_parts.append("\n\n".join(written_content))
+                # 将内容合并后进行表格清理
+                content_text = "\n\n".join(written_content)
+                cleaned_content = _clean_markdown_tables(content_text)
+                md_parts.append(cleaned_content)
             
             children = section.get("children")
             if children:
@@ -329,7 +388,9 @@ def _format_draft_report_to_md(report_data: List[Dict[str, Any]]) -> str:
 
     _parse_recursive(report_data, 1)
 
-    return "\n\n".join(md_parts)
+    # 对整个报告再次进行表格清理，确保跨段落的表格也被正确处理
+    final_content = "\n\n".join(md_parts)
+    return _clean_markdown_tables(final_content)
 
 
 def save_results(output_dir: Path, final_state: Dict[str, Any]):

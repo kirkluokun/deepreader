@@ -47,7 +47,7 @@ class DeepReaderConfig:
 
     # 当 PARSING_STRATEGY 设置为 'snippet' 时，每个文本片段的目标字数。
     # 这个数值越大，阅读速度越快，但是阅读精度可能有一定程度下降。类似于“一目十行”速度越快。
-    SNIPPET_CHUNK_SIZE: int = 10000
+    SNIPPET_CHUNK_SIZE: int = 20000
 
     # =================================================================
     # 报告生成模式配置
@@ -57,7 +57,7 @@ class DeepReaderConfig:
     # - 'test': 测试模式，用于快速调试，生成最精简的报告。
     # - 'concise': 精简模式，默认选项，平衡速度与报告深度。
     # - 'deep': 深度模式，生成最全面、深入的报告，耗时最长。
-    MODE: Literal['test', 'concise', 'deep'] = 'concise'
+    MODE: Literal['test', 'concise', 'deep'] = 'deep'
 
     # 定义不同模式下的具体参数
     MODE_SETTINGS: Dict[str, Dict[str, Any]] = {

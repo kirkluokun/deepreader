@@ -29,11 +29,244 @@ from backend.config import deep_reader_config
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
+def _clean_markdown_tables(content: str) -> str:
+    """
+    清理markdown内容中表格的格式问题，移除表格行之间的空行
+    
+    Args:
+        content: 原始markdown内容
+        
+    Returns:
+        清理后的markdown内容
+    """
+    if not content:
+        return content
+    
+    lines = content.split('\n')
+    cleaned_lines = []
+    in_table = False
+    
+    for i, line in enumerate(lines):
+        line_stripped = line.strip()
+        
+        # 检查是否是表格行
+        is_table_row = line_stripped and line_stripped.startswith('|') and line_stripped.endswith('|')
+        
+        if is_table_row:
+            # 这是表格行
+            if not in_table:
+                # 进入表格状态
+                in_table = True
+            cleaned_lines.append(line)
+        elif in_table:
+            # 之前在表格中，现在不是表格行
+            if line_stripped:
+                # 非空行，表格结束
+                in_table = False
+                cleaned_lines.append(line)
+            else:
+                # 空行，检查下一行是否还是表格行
+                next_is_table = False
+                for j in range(i + 1, len(lines)):
+                    next_line = lines[j].strip()
+                    if next_line:
+                        if next_line.startswith('|') and next_line.endswith('|'):
+                            next_is_table = True
+                        break
+                
+                if not next_is_table:
+                    # 下一个非空行不是表格行，表格结束，保留空行
+                    in_table = False
+                    cleaned_lines.append(line)
+                # 如果下一个非空行还是表格行，则跳过当前空行（不添加到cleaned_lines）
+        else:
+            # 不在表格中，正常添加行
+            cleaned_lines.append(line)
+    
+    return '\n'.join(cleaned_lines)
+
+
 def _robust_json_parser(json_string: str) -> Any:
     """A robust utility to clean and parse JSON from LLM outputs using json_repair."""
     if json_string.strip().startswith("```json"):
         json_string = json_string.strip()[7:-3].strip()
     return json_repair_loads(json_string)
+
+
+def _extract_data_names_from_llm_response(response: str) -> List[str]:
+    """
+    从LLM响应中提取data_name列表，处理各种可能的输出格式
+    
+    Args:
+        response: LLM的原始响应
+        
+    Returns:
+        提取出的data_name字符串列表
+    """
+    logging.debug(f"尝试从响应中提取data_names: {response[:100]}...")
+    
+    try:
+        # 首先尝试标准JSON解析
+        parsed = _robust_json_parser(response)
+        logging.debug(f"JSON解析结果类型: {type(parsed)}, 内容: {parsed}")
+        
+        if isinstance(parsed, list):
+            data_names = []
+            
+            for item in parsed:
+                if isinstance(item, str):
+                    # 标准格式：["data_name1", "data_name2"]
+                    data_names.append(item)
+                    logging.debug(f"提取字符串: {item}")
+                elif isinstance(item, dict):
+                    # LLM返回了完整对象：[{"data_name": "xxx", "description": "yyy"}]
+                    if "data_name" in item:
+                        data_names.append(item["data_name"])
+                        logging.debug(f"从对象中提取data_name: {item['data_name']}")
+                    # 有时候LLM可能使用其他字段名
+                    elif "name" in item:
+                        data_names.append(item["name"])
+                        logging.debug(f"从对象中提取name: {item['name']}")
+                    elif "title" in item:
+                        data_names.append(item["title"])
+                        logging.debug(f"从对象中提取title: {item['title']}")
+                    # 如果对象只有一个字符串值，可能就是data_name
+                    elif len(item) == 1:
+                        value = list(item.values())[0]
+                        if isinstance(value, str):
+                            data_names.append(value)
+                            logging.debug(f"从单值对象中提取: {value}")
+            
+            logging.info(f"成功提取到 {len(data_names)} 个data_names: {data_names}")
+            return data_names
+        
+        elif isinstance(parsed, dict):
+            # 如果LLM返回了单个对象而不是数组
+            logging.debug(f"LLM返回了对象而不是数组: {parsed}")
+            if "data_name" in parsed:
+                logging.info(f"从对象中提取单个data_name: {parsed['data_name']}")
+                return [parsed["data_name"]]
+            elif "data_names" in parsed:
+                # 可能LLM把结果放在一个字段里
+                names = parsed["data_names"]
+                if isinstance(names, list):
+                    result = [name if isinstance(name, str) else str(name) for name in names]
+                    logging.info(f"从对象的data_names字段中提取: {result}")
+                    return result
+            
+        elif isinstance(parsed, str):
+            # 如果解析出来是单个字符串
+            logging.debug(f"LLM返回了单个字符串: {parsed}")
+            return [parsed]
+        
+        else:
+            logging.warning(f"LLM返回了意外的格式: {type(parsed)}, 内容: {parsed}")
+            
+    except Exception as e:
+        logging.warning(f"JSON解析失败，尝试从文本中提取: {e}")
+        
+        # 备用方案：尝试从文本中提取类似JSON数组的内容
+        import re
+        
+        # 查找数组格式 ["item1", "item2"]
+        array_pattern = r'\[(.*?)\]'
+        matches = re.findall(array_pattern, response, re.DOTALL)
+        
+        if matches:
+            # 取最后一个匹配（通常是最完整的）
+            array_content = matches[-1]
+            
+            # 提取引号中的内容
+            string_pattern = r'["\'"](.*?)["\'"'
+            strings = re.findall(string_pattern, array_content)
+            
+            if strings:
+                logging.info(f"使用正则表达式提取到: {strings}")
+                return strings
+                
+        # 如果还是找不到，返回空列表
+        logging.warning(f"无法从响应中提取有效的data_names，原始响应: {response[:300]}...")
+    
+    return []
+
+
+def _extract_titles_from_llm_response(response: str) -> List[str]:
+    """
+    从LLM响应中提取标题列表，处理各种可能的输出格式
+    
+    Args:
+        response: LLM的原始响应
+        
+    Returns:
+        提取出的标题字符串列表
+    """
+    try:
+        # 首先尝试标准JSON解析
+        parsed = _robust_json_parser(response)
+        
+        if isinstance(parsed, list):
+            titles = []
+            
+            for item in parsed:
+                if isinstance(item, str):
+                    # 标准格式：["title1", "title2"]
+                    titles.append(item)
+                elif isinstance(item, dict):
+                    # LLM可能返回了对象格式
+                    if "title" in item:
+                        titles.append(item["title"])
+                    elif "name" in item:
+                        titles.append(item["name"])
+                    elif "chapter" in item:
+                        titles.append(item["chapter"])
+                    # 如果对象只有一个字符串值，可能就是标题
+                    elif len(item) == 1:
+                        value = list(item.values())[0]
+                        if isinstance(value, str):
+                            titles.append(value)
+            
+            return titles
+        
+        elif isinstance(parsed, dict):
+            # 如果LLM返回了单个对象而不是数组
+            if "titles" in parsed:
+                titles = parsed["titles"]
+                if isinstance(titles, list):
+                    return [title if isinstance(title, str) else str(title) for title in titles]
+            elif "chapters" in parsed:
+                chapters = parsed["chapters"]
+                if isinstance(chapters, list):
+                    return [chapter if isinstance(chapter, str) else str(chapter) for chapter in chapters]
+            
+        elif isinstance(parsed, str):
+            # 如果解析出来是单个字符串
+            return [parsed]
+            
+    except Exception as e:
+        logging.warning(f"JSON解析失败，尝试从文本中提取: {e}")
+        
+        # 备用方案：尝试从文本中提取类似JSON数组的内容
+        import re
+        
+        # 查找数组格式 ["item1", "item2"]
+        array_pattern = r'\[(.*?)\]'
+        matches = re.findall(array_pattern, response, re.DOTALL)
+        
+        if matches:
+            # 取最后一个匹配（通常是最完整的）
+            array_content = matches[-1]
+            
+            # 提取引号中的内容
+            string_pattern = r'["\'"](.*?)["\'"'
+            strings = re.findall(string_pattern, array_content)
+            
+            if strings:
+                return strings
+                
+        # 如果还是找不到，返回空列表
+        logging.warning("无法从响应中提取有效的titles")
+    
+    return []
 
 
 async def analyze_narrative_flow_action(chapter_summaries: Dict[str, str]) -> str:
@@ -209,8 +442,17 @@ async def write_section_action(
             if not isinstance(written_part, list):
                  raise ValueError("'written_part' should be a list of strings (paragraphs).")
             
+            # 对每个段落进行表格格式清理
+            cleaned_written_part = []
+            for paragraph in written_part:
+                if isinstance(paragraph, str):
+                    cleaned_paragraph = _clean_markdown_tables(paragraph)
+                    cleaned_written_part.append(cleaned_paragraph)
+                else:
+                    cleaned_written_part.append(paragraph)
+            
             logging.info(f"--- Writer 完成撰写章节: {current_section_title} ---")
-            return written_part, part_summary
+            return cleaned_written_part, part_summary
         except (json.JSONDecodeError, ValueError) as e:
             logging.warning(f"Writer JSON 解析失败 (尝试 {attempt + 1}/3): {e}\\n原始响应: {response_json_str}")
             if attempt == 2:
@@ -245,10 +487,11 @@ async def select_and_retrieve_summaries_action(
         logging.info(f"--- 为 '{current_section_title}' 动态筛选相关摘要 (尝试 {attempt + 1}/3) ---")
         response_json_str = await call_fast_llm(prompt)
         try:
-            suggested_titles = _robust_json_parser(response_json_str)
-            if not isinstance(suggested_titles, list):
-                logging.warning("LLM未能返回一个标题列表。将重试...")
-                raise ValueError("LLM did not return a list.")
+            # 使用增强的解析函数
+            suggested_titles = _extract_titles_from_llm_response(response_json_str)
+            if not suggested_titles:
+                logging.warning(f"LLM未能返回有效的标题列表。原始响应: {response_json_str[:200]}...")
+                raise ValueError("LLM did not return valid titles.")
 
             # 模糊匹配并提取摘要
             focused_summaries = []
@@ -271,8 +514,8 @@ async def select_and_retrieve_summaries_action(
             logging.info(f"成功筛选出 {len(focused_summaries)} 个相关摘要。")
             return "\\n\\n---\\n\\n".join(focused_summaries)
 
-        except (json.JSONDecodeError, ValueError) as e:
-            logging.warning(f"筛选相关摘要时解析JSON失败 (尝试 {attempt + 1}/3): {e}\\n响应: {response_json_str}")
+        except Exception as e:
+            logging.warning(f"筛选相关摘要时处理失败 (尝试 {attempt + 1}/3): {e}\\n响应: {response_json_str[:200]}...")
             if attempt == 2:
                  logging.error(f"筛选相关摘要时在所有重试后失败: {e}")
                  return f"Error selecting summaries after retries: {e}"
@@ -313,9 +556,13 @@ async def select_and_retrieve_key_info_action(
         logging.info(f"--- 筛选关键信息 (尝试 {attempt + 1}/3) ---")
         response_json_str = await call_smart_llm(prompt)
         try:
-            suggested_data_names = _robust_json_parser(response_json_str)
-            if not isinstance(suggested_data_names, list):
-                raise ValueError("LLM did not return a list.")
+            # 使用增强的解析函数
+            suggested_data_names = _extract_data_names_from_llm_response(response_json_str)
+            if not suggested_data_names:
+                logging.warning(f"LLM未能返回有效的data_names列表。原始响应: {response_json_str[:200]}...")
+                # 这里不抛出异常，因为空列表是有效的（表示没有相关信息）
+                logging.info("LLM返回空列表，继续处理...")
+                return "No highly relevant key information found for this section."
 
             # 创建一个从 data_name 到完整信息的映射，用于快速查找
             key_info_map = {item.get("data_name"): item for item in all_key_information}
@@ -336,8 +583,8 @@ async def select_and_retrieve_key_info_action(
             logging.info(f"成功筛选出 {len(focused_key_info)} 条相关关键信息。")
             return "\\n\\n---\\n\\n".join(focused_key_info)
 
-        except (json.JSONDecodeError, ValueError) as e:
-            logging.warning(f"筛选关键信息时解析JSON失败 (尝试 {attempt + 1}/3): {e}\\n响应: {response_json_str}")
+        except Exception as e:
+            logging.warning(f"筛选关键信息时处理失败 (尝试 {attempt + 1}/3): {e}\\n响应: {response_json_str[:200]}...")
             if attempt == 2:
                  logging.error(f"筛选关键信息时在所有重试后失败: {e}")
                  return f"Error selecting key information after retries: {e}"
