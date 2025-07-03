@@ -31,12 +31,21 @@ fi
 echo "🐍 当前Python版本:"
 poetry run python --version
 
-# 安装依赖
+# 检查虚拟环境
+echo "📍 当前虚拟环境:"
+poetry env info
+
+# 安装依赖（跳过版本冲突检查）
 echo "📥 安装项目依赖..."
-poetry install
+poetry install --no-dev || {
+    echo "⚠️ 安装依赖时出现警告，但继续启动服务器..."
+}
 
 # 切换回frontend目录
 cd frontend
+
+# 设置Python路径环境变量
+export PYTHONPATH="$PWD/..:$PYTHONPATH"
 
 # 启动服务器
 echo "🚀 启动DeepReader前端服务器..."
@@ -46,4 +55,5 @@ echo ""
 echo "按 Ctrl+C 停止服务器"
 echo "=================================="
 
-poetry run python api_server.py
+# 使用poetry run启动，并设置环境变量
+PYTHONPATH="$PWD/..:$PYTHONPATH" poetry run python api_server.py

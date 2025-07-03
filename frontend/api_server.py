@@ -40,7 +40,11 @@ os.chdir(workspace_root)
 if str(workspace_root) not in sys.path:
     sys.path.insert(0, str(workspace_root))
 
-# 导入DeepReader模块
+# 将DeepReader根目录也添加到sys.path
+if str(deepreader_root) not in sys.path:
+    sys.path.insert(0, str(deepreader_root))
+
+# 导入DeepReader模块 - 移到环境设置之后
 from backend.read_graph import create_deepreader_graph
 from backend.read_state import DeepReaderState
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
