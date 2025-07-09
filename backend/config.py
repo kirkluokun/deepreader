@@ -57,7 +57,7 @@ class DeepReaderConfig:
     # - 'test': 测试模式，用于快速调试，生成最精简的报告。
     # - 'concise': 精简模式，默认选项，平衡速度与报告深度。
     # - 'deep': 深度模式，生成最全面、深入的报告，耗时最长。
-    MODE: Literal['test', 'concise', 'deep'] = 'deep'
+    MODE: Literal['test', 'concise', 'deep'] = 'concise'
 
     # 定义不同模式下的具体参数
     MODE_SETTINGS: Dict[str, Dict[str, Any]] = {
