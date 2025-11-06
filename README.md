@@ -30,6 +30,7 @@
 **文档处理**
 - 📕 marker-pdf - PDF 转 Markdown
 - 📚 ebooklib - EPUB 处理
+- 📖 mobi - MOBI 电子书处理
 - 🧹 BeautifulSoup4 - HTML 清理
 
 **用户交互**
@@ -252,6 +253,7 @@ DeepReader 支持多种文档格式，系统会自动检测并处理：
 - **处理方式**：直接读取，无需转换
 - **适用场景**：已经是 Markdown 格式的文档
 - **示例**：`/path/to/document.md`
+- **说明**：推荐格式，处理速度最快
 
 ### 📕 PDF 文件 (.pdf)
 - **处理方式**：使用本地 marker 进行高质量转换
@@ -270,6 +272,15 @@ DeepReader 支持多种文档格式，系统会自动检测并处理：
   - 自动清理 HTML 标签
 - **输出位置**：在同目录下创建 `文件名/文件名.md`
 - **示例**：`/path/to/book.epub` → `/path/to/book/book.md`
+
+### 📖 MOBI 电子书 (.mobi)
+- **处理方式**：使用 mobi 库解压并提取文本
+- **转换特性**：
+  - 解压 MOBI 文件到临时目录
+  - 解析内部 HTML 文件
+  - 自动清理 HTML 标签和特殊字符
+- **输出位置**：在同目录下创建 `文件名/文件名.md`
+- **示例**：`/path/to/book.mobi` → `/path/to/book/book.md`
 
 ## 🔄 智能文档处理流程
 

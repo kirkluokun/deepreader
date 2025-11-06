@@ -56,6 +56,7 @@ setup_environment()
 # --- 2. 导入必要的模块 ---
 from backend.read_graph import create_deepreader_graph
 from backend.read_state import DeepReaderState
+from backend.components.token_counter import get_token_counter
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 # --- 3. 定义常量 ---
@@ -166,6 +167,7 @@ def convert_document_to_markdown(file_path: str) -> str:
     """
     from backend.scraper.pdf_converter import convert_pdf_to_markdown
     from backend.scraper.epub_converter import convert_epub_to_markdown
+    from backend.scraper.mobi_converter import convert_mobi_to_markdown
     
     file_path_obj = Path(file_path)
     file_ext = file_path_obj.suffix.lower()
@@ -323,8 +325,82 @@ def convert_document_to_markdown(file_path: str) -> str:
         # 重新读取可能被用户修改的文件
         return actual_md_path.read_text(encoding='utf-8')
         
+    elif file_ext == '.mobi':
+        # 转换 MOBI 文件
+        logging.info(f"检测到 MOBI 文件，开始转换: {file_path}")
+        
+        # MOBI 也输出到子文件夹，与 PDF/EPUB 保持一致
+        expected_md_dir = file_path_obj.parent / file_path_obj.stem
+        expected_md_path = expected_md_dir / f"{file_path_obj.stem}.md"
+        
+        # 检查是否已存在转换后的文件
+        if expected_md_path.exists():
+            print(f"\\n💡 发现已存在的 Markdown 文件:")
+            print(f"   {expected_md_path}")
+            choice = input("   是否使用现有文件? (Y/n): ").lower().strip()
+            if choice == 'y' or choice == '':
+                return expected_md_path.read_text(encoding='utf-8')
+        
+        # 执行转换
+        markdown_content = convert_mobi_to_markdown(file_path)
+        
+        # 查找实际生成的 markdown 文件  
+        actual_md_path = None
+        if expected_md_path.exists():
+            actual_md_path = expected_md_path
+            logging.info(f"找到预期路径的 Markdown 文件: {actual_md_path}")
+        else:
+            # 如果预期路径不存在，搜索可能的位置
+            search_locations = [
+                file_path_obj.with_suffix('.md'),  # 同目录下的直接替换
+                expected_md_path,  # 子目录中的预期位置
+                file_path_obj.parent,  # 父目录中搜索
+                expected_md_dir,  # 子目录中搜索
+            ]
+            
+            logging.info(f"在预期路径未找到文件，开始搜索其他位置...")
+            
+            for search_location in search_locations:
+                if search_location.is_file() and search_location.suffix == '.md':
+                    # 直接是一个 .md 文件
+                    if search_location.stem == file_path_obj.stem:
+                        actual_md_path = search_location
+                        logging.info(f"找到匹配的 Markdown 文件: {actual_md_path}")
+                        break
+                elif search_location.is_dir():
+                    # 在目录中搜索 .md 文件
+                    md_files = list(search_location.glob("*.md"))
+                    if md_files:
+                        # 优先选择与原文件名匹配的
+                        for md_file in md_files:
+                            if md_file.stem == file_path_obj.stem:
+                                actual_md_path = md_file
+                                logging.info(f"在目录 {search_location} 中找到匹配的 Markdown 文件: {actual_md_path}")
+                                break
+                        # 如果没有完全匹配的，使用第一个 .md 文件
+                        if not actual_md_path and md_files:
+                            actual_md_path = md_files[0]
+                            logging.info(f"在目录 {search_location} 中找到 Markdown 文件（非完全匹配）: {actual_md_path}")
+                        break
+        
+        if not actual_md_path or not actual_md_path.exists():
+            raise FileNotFoundError(f"未找到转换后的 Markdown 文件。预期位置: {expected_md_path}")
+        
+        print(f"\\n✅ MOBI 转换完成，已保存到: {actual_md_path}")
+        
+        # 提示用户检查和清理
+        print("\\n⚠️  请检查生成的 Markdown 文件并进行必要的清理：")
+        print("   - 删除不相关的内容（如目录、版权信息等）")
+        print("   - 检查格式是否正确")
+        print("   - 确保章节结构清晰")
+        
+        input("\\n✏️  请完成文件清理后按回车键继续...")
+        
+        # 重新读取可能被用户修改的文件
+        return actual_md_path.read_text(encoding='utf-8')
+        
     else:
-        raise ValueError(f"不支持的文件类型: {file_ext}。支持的格式: .md, .pdf, .epub")
+        raise ValueError(f"不支持的文件类型: {file_ext}。支持的格式: .md, .pdf, .epub, .mobi")
 
 # --- 6. 结果格式化与保存 ---
 def _clean_markdown_tables(content: str) -> str:
@@ -495,6 +571,10 @@ def save_results(output_dir: Path, final_state: Dict[str, Any]):
 async def main():
     """主测试函数"""
     
+    # 重置 token 计数器（确保每次运行都是新统计）
+    token_counter = get_token_counter()
+    token_counter.reset()
+    
     # 获取用户输入并维护会话
     session_defaults = load_session_cache()
     user_inputs = await get_user_inputs(session_defaults)
@@ -616,6 +696,20 @@ async def main():
         output_dir = BASE_OUTPUT_DIR / f"{timestamp}_{document_path.stem}"
         
         save_results(output_dir, final_state)
+        
+        # 显示 token 使用统计
+        print("\n")
+        token_counter = get_token_counter()
+        print(token_counter.get_summary())
+        
+        # 同时保存 token 统计到文件
+        token_stats_path = output_dir / "token_usage.json"
+        try:
+            with open(token_stats_path, 'w', encoding='utf-8') as f:
+                json.dump(token_counter.get_stats(), f, ensure_ascii=False, indent=4)
+            print(f"💾 Token 统计已保存: {token_stats_path.name}\n")
+        except Exception as e:
+            print(f"❌ 保存 Token 统计失败: {e}")
     else:
         print("未获取到最终状态，无法保存结果。")
 

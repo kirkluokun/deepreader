@@ -71,22 +71,44 @@ class DeepReaderVectorStore(VectorStore):
     def add_texts(self, texts: Iterable[str], metadatas: Optional[List[dict]] = None, **kwargs: Any) -> List[str]:
         """
         将文本和元数据添加到向量存储中。
+        支持大文档批量处理，避免超过 OpenAI API 的 token 限制（单次请求最大 300k tokens）。
         """
         texts_list = list(texts)
         if not texts_list:
             return []
 
-        # 1. 向量化
-        embeddings = self.embedding_model.embed_documents(texts_list)
-        embeddings_np = np.array(embeddings, dtype='float32')
-
-        # 2. 将文本和元数据存入 SQLite，并获取 ID
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        chunk_ids = []
         # 确保 metadatas 列表长度与 texts_list 匹配
         if metadatas is None:
             metadatas = [{} for _ in texts_list]
+        
+        # 1. 批量向量化（分批处理以避免超过 API 限制）
+        batch_size = 100  # 每批最多 100 个块，保守估计确保不超过 300k token
+        all_embeddings = []
+        
+        print(f"开始向量化 {len(texts_list)} 个文本块...")
+        
+        for i in range(0, len(texts_list), batch_size):
+            batch_texts = texts_list[i:i+batch_size]
+            batch_num = i // batch_size + 1
+            total_batches = (len(texts_list) + batch_size - 1) // batch_size
+            
+            print(f"  正在向量化第 {batch_num}/{total_batches} 批 ({len(batch_texts)} 个块)...")
+            
+            try:
+                batch_embeddings = self.embedding_model.embed_documents(batch_texts)
+                all_embeddings.extend(batch_embeddings)
+                print(f"  ✅ 第 {batch_num} 批完成")
+            except Exception as e:
+                print(f"  ❌ 第 {batch_num} 批向量化失败: {e}")
+                raise
+        
+        embeddings_np = np.array(all_embeddings, dtype='float32')
+
+        # 2. 将文本和元数据存入 SQLite，并获取 ID
+        print(f"正在存储文本块到 SQLite...")
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        chunk_ids = []
             
         for content, meta in zip(texts_list, metadatas):
             cursor.execute("INSERT INTO chunks (content, metadata) VALUES (?, ?)", 
@@ -96,12 +118,13 @@ class DeepReaderVectorStore(VectorStore):
         conn.close()
 
         # 3. 将向量存入 FAISS
+        print(f"正在存储向量到 FAISS 索引...")
         ids_np = np.array(chunk_ids, dtype='int64')
         self.index.add_with_ids(embeddings_np, ids_np)
         
         # 4. 保存 FAISS 索引
         faiss.write_index(self.index, self.faiss_path)
-        print(f"成功添加 {len(texts_list)} 个块到 RAG 存储。")
+        print(f"✅ 成功添加 {len(texts_list)} 个块到 RAG 存储。")
         
         return [str(cid) for cid in chunk_ids]
 

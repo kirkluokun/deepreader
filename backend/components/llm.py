@@ -9,12 +9,16 @@ import logging
 from ..config import deep_reader_config
 from .google_llm import call_google_llm
 from gpt_researcher.utils.llm import create_chat_completion
+from .token_counter import get_token_counter
 
 import numpy as np
 
 
 # 使用本地配置
 config = deep_reader_config
+
+# 获取全局 token 计数器
+token_counter = get_token_counter()
 
 
 async def call_writer_llm(prompt: str) -> str:
@@ -32,13 +36,18 @@ async def call_writer_llm(prompt: str) -> str:
     messages = [{"role": "user", "content": prompt}]
     
     try:
-        return await create_chat_completion(
+        response = await create_chat_completion(
             messages=messages,
             model=llm_model,
             llm_provider=llm_provider,
             temperature=config.temperature,
             llm_kwargs=config.llm_kwargs,
         )
+        
+        # 记录 token 使用
+        token_counter.add_call("writer_llm", prompt, response)
+        
+        return response
     except Exception as e:
         logging.error(f"调用 Strategic LLM 时发生错误: {e}")
         return f"Error calling Strategic LLM: {e}"
@@ -59,13 +68,18 @@ async def call_smart_llm(prompt: str) -> str:
     messages = [{"role": "user", "content": prompt}]
     
     try:
-        return await create_chat_completion(
+        response = await create_chat_completion(
             messages=messages,
             model=llm_model,
             llm_provider=llm_provider,
             temperature=config.temperature,
             llm_kwargs=config.llm_kwargs,
         )
+        
+        # 记录 token 使用
+        token_counter.add_call("smart_llm", prompt, response)
+        
+        return response
     except Exception as e:
         logging.error(f"调用 Smart LLM 时发生错误: {e}")
         return f"Error calling Smart LLM: {e}"
@@ -94,13 +108,18 @@ async def call_fast_llm(prompt: str) -> str:
     messages = [{"role": "user", "content": prompt}]
     
     try:
-        return await create_chat_completion(
+        response = await create_chat_completion(
             messages=messages,
             model=llm_model,
             llm_provider=llm_provider,
             temperature=config.temperature,
             llm_kwargs=config.llm_kwargs,
         )
+        
+        # 记录 token 使用
+        token_counter.add_call("fast_llm", prompt, response)
+        
+        return response
     except Exception as e:
         import traceback
         logging.error(f"调用 Fast LLM 时发生严重错误: {e}")
@@ -129,7 +148,12 @@ async def call_search_llm(prompt: str) -> str:
 
     if llm_provider == "google_genai":
         try:
-            return await call_google_llm(prompt, llm_model)
+            response = await call_google_llm(prompt, llm_model)
+            
+            # 记录 token 使用
+            token_counter.add_call("search_llm", prompt, response)
+            
+            return response
         except Exception as e:
             logging.error(f"调用 Google Search LLM 时发生错误: {e}")
             return f"Error calling Google Search LLM: {e}"
@@ -138,13 +162,18 @@ async def call_search_llm(prompt: str) -> str:
         logging.warning(f"Search LLM 提供商 '{llm_provider}' 不是 'google_genai'，将作为标准 LLM 调用。")
         messages = [{"role": "user", "content": prompt}]
         try:
-            return await create_chat_completion(
+            response = await create_chat_completion(
                 messages=messages,
                 model=llm_model,
                 llm_provider=llm_provider,
                 temperature=config.temperature,
                 llm_kwargs=config.llm_kwargs,
             )
+            
+            # 记录 token 使用
+            token_counter.add_call("search_llm", prompt, response)
+            
+            return response
         except Exception as e:
             logging.error(f"调用 Search LLM ({llm_provider}) 时发生错误: {e}")
             return f"Error calling Search LLM: {e}"
