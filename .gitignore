@@ -39,7 +39,6 @@ node_modules
 .DS_Store
 .docusaurus
 build
-docs/build
 
 .vscode/launch.json
 .langgraph-data/
@@ -78,5 +77,3 @@ frontend/uploads/20250703_103416_稳定币的经济学分析/20250703_103416_稳
 frontend/uploads/20250703_103531_xm.md
 frontend/uploads/20250703_103639_xm.md
 frontend/uploads/20250703_103856_2025h2.md
-写作流程性能分析.md
-辩论机制详解.md
