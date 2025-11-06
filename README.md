@@ -8,9 +8,32 @@
 
 - 🤖 **多智能体协作**：通过 ReadingAgent、ReviewerAgent、SummaryAgent 等多个专业化AI代理的协同工作，实现对文档的多维度、深层次分析。
 - 🧠 **主动式迭代阅读**：模仿人类精读过程，包含提出问题、基于问题进行检索（RAG）、生成边栏笔记、整合记忆等步骤，循环往复直至读完整篇文档。
-- 🔍 **RAG 增强分析**：内置基于 FAISS 和 SQLite 的本地知识库，在阅读过程中随时进行全文检索和深度问答，发现跨章节的隐藏关联。
+- 🔍 **RAG 增强分析**：内置基于 FAISS 和 SQLite 的本地向量数据库，在阅读过程中随时进行语义检索和深度问答，发现跨章节的隐藏关联。使用 OpenAI text-embedding-3-large 进行文档向量化。
 - 💾 **状态持久化与断点续传**：所有处理过程和状态都通过 LangGraph 的 Checkpointer 机制进行持久化，支持从任意中断点无缝恢复任务，无惧长文档处理过程中的意外中断。
 - 📊 **结构化与定制化输出**：能够生成章节摘要、主题思想分析、批判性辩论记录、完整分析报告等多种结构化的知识产物。
+
+### 🛠️ 技术栈
+
+**AI & LLM**
+- 🧠 Google Gemini (2.0-flash, 2.5-flash, 2.5-pro) - LLM 推理
+- 🔤 OpenAI text-embedding-3-large - 文档向量化
+
+**检索系统**
+- 📚 FAISS (Facebook AI Similarity Search) - 向量相似度检索
+- 💾 SQLite - 文档块元数据存储
+- 🔗 LangChain - RAG 框架集成
+
+**工作流编排**
+- 🔄 LangGraph - 多智能体工作流
+- 💿 AsyncSqliteSaver - 状态持久化
+
+**文档处理**
+- 📕 marker-pdf - PDF 转 Markdown
+- 📚 ebooklib - EPUB 处理
+- 🧹 BeautifulSoup4 - HTML 清理
+
+**用户交互**
+- 💬 prompt_toolkit - 增强命令行交互
 
 ---
 
@@ -252,7 +275,10 @@ cd deepreader
 
 **b. 使用 Poetry 安装依赖**
 ```bash
-# 这将创建一个虚拟环境并安装所有在 pyproject.toml 中定义的依赖
+# 如果 poetry.lock 不存在，先生成
+poetry lock
+
+# 安装所有依赖（这将创建虚拟环境并安装所有在 pyproject.toml 中定义的依赖）
 poetry install
 ```
 
@@ -302,50 +328,70 @@ pip install -r requirements.txt
 
 ### 3. 配置环境变量
 
-DeepReader 需要访问 LLM 服务。请根据您的操作系统设置 API 密钥。
+DeepReader 需要两个 API 密钥来运行：
+
+**必需的 API 密钥：**
+- 🔑 **GOOGLE_API_KEY**: 用于所有 LLM 推理（Gemini 模型）
+- 🔑 **OPENAI_API_KEY**: 用于文档向量化（text-embedding-3-large）
+
+**推荐方式：使用 .env 文件（所有系统通用）**
+
+1. 复制示例配置文件：
+```bash
+cp .env.example .env
+```
+
+2. 编辑 `.env` 文件，填入你的真实 API 密钥：
+```bash
+# Google Gemini API 密钥（用于 LLM 调用）
+# 获取地址: https://aistudio.google.com/app/apikey
+GOOGLE_API_KEY=your-google-api-key-here
+
+# OpenAI API 密钥（用于向量嵌入）
+# 获取地址: https://platform.openai.com/api-keys
+OPENAI_API_KEY=your-openai-api-key-here
+```
+
+**替代方式：直接设置环境变量**
+
+如果你不想使用 `.env` 文件，也可以直接设置环境变量：
 
 **macOS/Linux:**
 ```bash
-# 以 OpenAI 为例
-export OPENAI_API_KEY="your-openai-api-key"
-
-# 如果您使用其他模型，也请设置相应的环境变量
 export GOOGLE_API_KEY="your-google-api-key"
+export OPENAI_API_KEY="your-openai-api-key"
 ```
 
 **Windows (PowerShell):**
 ```powershell
-# 以 OpenAI 为例
-$env:OPENAI_API_KEY="your-openai-api-key"
-
-# 如果您使用其他模型，也请设置相应的环境变量
 $env:GOOGLE_API_KEY="your-google-api-key"
+$env:OPENAI_API_KEY="your-openai-api-key"
 ```
 
 **Windows (CMD):**
 ```cmd
-# 以 OpenAI 为例
-set OPENAI_API_KEY=your-openai-api-key
-
-# 如果您使用其他模型，也请设置相应的环境变量
 set GOOGLE_API_KEY=your-google-api-key
+set OPENAI_API_KEY=your-openai-api-key
 ```
 
-**推荐方式：使用 .env 文件**
-在项目根目录创建 `.env` 文件，添加以下内容：
-```
-OPENAI_API_KEY=your-openai-api-key
-GOOGLE_API_KEY=your-google-api-key
-```
-这种方式在所有操作系统上都通用，且更加安全。
+**⚠️ 重要说明：**
+- DeepReader 是**本地文档分析系统**，使用 FAISS 向量数据库进行检索
+- **不需要**网络搜索引擎 API（如 Serper、Tavily、Bing 等）
+- 所有分析都基于你上传的文档内容
 
-### 4. 安装 marker（PDF 处理依赖）
+### 4. 验证安装
 
-DeepReader 使用 marker 进行高质量的 PDF 转换。请安装：
+验证关键依赖是否正确安装：
 
 ```bash
-pip install marker-pdf
+# 检查 Python 版本
+python --version  # 应该显示 3.12.x
+
+# 检查依赖
+pip list | grep -E "prompt-toolkit|langgraph|marker-pdf|ebooklib|faiss"
 ```
+
+如果使用 Poetry，所有依赖都已自动安装。如果使用 pip，确保 `marker-pdf` 和 `ebooklib` 已正确安装（用于 PDF 和 EPUB 处理）。
 
 ### 5. 运行系统
 
@@ -625,12 +671,24 @@ deepreader/
 
 ## 📊 输出结果
 
-分析完成后，所有结果将保存在 `output/` 目录下，以时间戳和文档名命名的子目录中。
-- `final_state.json`: 包含所有中间过程和最终结果的完整 JSON 数据。
-- `chapter_summary.md`: 各章节的详细摘要。
-- `draft_report.md`: 格式化后的最终分析报告。
-- `thematic_analysis.md`: 主题思想分析。
-- `debate_questions.md`: AI 代理在阅读过程中提出的深度问题及 RAG 检索到的答案。
+分析完成后，所有结果将保存在 `output/` 目录下，以时间戳和文档名命名的子目录中：
+
+```
+output/20251106_163542_深度思考/
+├── final_state.json         # 完整分析状态（包含所有中间结果）
+├── chapter_summary.md       # 各章节的详细摘要
+├── draft_report.md          # 最终结构化分析报告
+├── thematic_analysis.md     # 主题思想分析（核心观点、结论、证据）
+└── debate_questions.md      # 阅读过程中的深度问答记录
+```
+
+### 输出文件说明
+
+- **final_state.json**: 包含整个处理过程的完整状态，可用于调试或进一步处理
+- **chapter_summary.md**: ReadingAgent 生成的各章节摘要，保留文档结构
+- **draft_report.md**: 写作研讨会产出的最终报告，直接回答用户的核心问题
+- **thematic_analysis.md**: 经过多轮辩论提炼的核心思想（key_idea, key_conclusion, key_evidence）
+- **debate_questions.md**: 阅读阶段 ReviewerAgent 基于 RAG 检索回答的问题列表
 
 ## 🤝 贡献指南
 

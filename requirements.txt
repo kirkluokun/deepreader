@@ -1,7 +1,77 @@
-fastapi>=0.104.1
-uvicorn[standard]>=0.24.0
-python-multipart>=0.0.6
-websockets>=12.0
-aiofiles>=23.2.1
-python-dotenv>=1.0.0
-pydantic>=2.5.0
+# ============================================================
+# DeepReader 核心依赖
+# ============================================================
+
+# LangChain & LangGraph 核心框架
+langgraph==0.5.0
+langchain-core==0.3.67
+langchain==0.3.26
+langchain-community==0.3.26
+langchain-text-splitters==0.3.8
+langchain-openai==0.3.27
+langgraph-checkpoint-sqlite==2.0.10
+langsmith>=0.4.4
+
+# Google AI 依赖
+google-generativeai>=0.8.5
+google-genai==1.20.0
+langchain-google-genai>=2.1.6
+
+# GPT Researcher（用于 LLM 调用工具）
+gpt-researcher==0.14.0
+
+# 文档处理
+marker-pdf==1.8.0
+ebooklib==0.19
+beautifulsoup4==4.13.4
+PyMuPDF>=1.26.1
+python-docx>=1.2.0
+unstructured>=0.18.2
+
+# Web & API
+fastapi==0.115.14
+uvicorn==0.35.0
+python-multipart==0.0.20
+requests==2.32.4
+aiohttp==3.12.13
+aiofiles==24.1.0
+httpx>=0.28.1
+
+# 数据处理
+pydantic==2.11.7
+numpy==2.3.1
+faiss-cpu==1.11.0
+SQLAlchemy>=2.0.41
+aiosqlite>=0.21.0
+
+# 文本处理
+thefuzz==0.22.1
+json-repair==0.47.6
+tiktoken>=0.9.0
+jinja2==3.1.6
+markdown>=3.8.2
+mistune>=3.1.3
+
+# PDF 生成
+weasyprint>=63.4
+
+# 机器学习
+torch>=2.7.1
+transformers>=4.53.0
+scikit-learn>=1.7.0
+pillow>=10.1.0,<11.0.0
+
+# 工具库
+python-dotenv==1.1.1
+typing-extensions==4.14.0
+tenacity>=9.1.2
+tqdm>=4.67.1
+colorama>=0.4.6
+click>=8.2.1
+rich>=10.2.0
+prompt-toolkit>=3.0.48
+
+# MCP 和其他功能
+langchain-mcp-adapters==0.1.8
+websockets>=15.0.1
+arxiv>=2.2.0
