@@ -189,213 +189,56 @@ graph TD
 
 ## 🚀 快速开始
 
-请遵循以下步骤来安装和运行 DeepReader。
+### 1. 环境要求
 
-### 1. 环境与版本管理 (强烈推荐)
+- Python 3.12 或更高版本
+- macOS、Linux 或 Windows 系统
 
-为了保证项目在不同环境下的一致性，我们强烈建议使用 `pyenv` 来管理 Python 版本，并结合 `poetry` 管理项目依赖。
+### 2. 安装
 
-**a. 安装 pyenv** (如果尚未安装)
-
-**macOS (使用 Homebrew):**
-```bash
-brew install pyenv
-```
-
-**Windows (使用 pyenv-win):**
-```powershell
-# 使用 Git 安装 pyenv-win
-git clone https://github.com/pyenv-win/pyenv-win.git %USERPROFILE%\.pyenv
-
-# 或者使用 pip 安装
-pip install pyenv-win --target %USERPROFILE%\.pyenv
-```
-
-**Windows 环境变量配置:**
-在 Windows 系统中，需要手动添加环境变量：
-1. 按 `Win + R`，输入 `sysdm.cpl`，打开系统属性
-2. 点击"环境变量"按钮
-3. 在"用户变量"中添加以下变量：
-   - `PYENV` = `%USERPROFILE%\.pyenv\pyenv-win`
-   - `PYENV_ROOT` = `%USERPROFILE%\.pyenv\pyenv-win`
-   - `PYENV_HOME` = `%USERPROFILE%\.pyenv\pyenv-win`
-4. 在 `PATH` 变量中添加：
-   - `%USERPROFILE%\.pyenv\pyenv-win\bin`
-   - `%USERPROFILE%\.pyenv\pyenv-win\shims`
-
-**Linux/Ubuntu:**
-```bash
-curl https://pyenv.run | bash
-```
-
-安装后，请根据 `pyenv` 的提示完成 shell 的初始化配置。
-
-**b. 安装指定的 Python 版本**
-本项目在 `pyproject.toml` 中指定的 Python 版本为 `3.12+`。
-
-**macOS/Linux:**
-```bash
-# 安装 python 3.12.3 或更高版本
-pyenv install 3.12.3
-
-# 进入项目目录
-# git clone <your-repo-url>
-# cd deepreader
-
-# 为当前目录设置 python 版本
-pyenv local 3.12.3
-```
-
-**Windows:**
-```powershell
-# 安装 python 3.12.3 或更高版本
-pyenv install 3.12.3
-
-# 进入项目目录 (使用 PowerShell 或 CMD)
-# git clone <your-repo-url>
-# cd deepreader
-
-# 为当前目录设置 python 版本
-pyenv local 3.12.3
-```
-
-设置成功后，在此目录中执行 `python --version` 应该会显示 `3.12.3` 或更高版本。
-
-### 2. 安装依赖
-
-您可以选择使用 `poetry` 或 `pip` 来安装项目依赖。
-
-#### 方式一：使用 Poetry (推荐)
-
-**a. 克隆项目并进入目录**
+**克隆项目并进入目录**
 ```bash
 git clone https://github.com/kirkluokun/deepreader.git
 cd deepreader
 ```
 
-**b. 使用 Poetry 安装依赖**
+**创建虚拟环境并安装依赖**
+
+macOS/Linux:
 ```bash
-# 如果 poetry.lock 不存在，先生成
-poetry lock
-
-# 安装所有依赖（这将创建虚拟环境并安装所有在 pyproject.toml 中定义的依赖）
-poetry install
-```
-
-**c. 激活 Poetry 的虚拟环境**
-```bash
-poetry shell
-```
-之后的所有命令都将在这个虚拟环境中执行。
-
-#### 方式二：使用 pip 和 requirements.txt
-
-如果您不使用 Poetry，也可以使用传统的 `requirements.txt` 文件。
-
-**a. 克隆项目并进入目录**
-```bash
-git clone https://github.com/kirkluokun/deepreader.git
-cd deepreader
-```
-
-**b. 创建并激活虚拟环境**
-
-**macOS/Linux:**
-```bash
-# 创建虚拟环境
 python3 -m venv .venv
-
-# 激活虚拟环境
 source .venv/bin/activate
-```
-
-**Windows:**
-```powershell
-# 创建虚拟环境
-python -m venv .venv
-
-# 激活虚拟环境 (PowerShell)
-.venv\Scripts\Activate.ps1
-
-# 或者在 CMD 中激活
-# .venv\Scripts\activate.bat
-```
-
-**c. 安装依赖**
-```bash
 pip install -r requirements.txt
 ```
 
-### 3. 配置环境变量
+Windows:
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-DeepReader 需要两个 API 密钥来运行：
+### 3. 配置 API 密钥
 
-**必需的 API 密钥：**
-- 🔑 **GOOGLE_API_KEY**: 用于所有 LLM 推理（Gemini 模型）
-- 🔑 **OPENAI_API_KEY**: 用于文档向量化（text-embedding-3-large）
+复制配置模板并填入你的 API 密钥：
 
-**推荐方式：使用 .env 文件（所有系统通用）**
-
-1. 复制示例配置文件：
 ```bash
 cp .env.example .env
 ```
 
-2. 编辑 `.env` 文件，填入你的真实 API 密钥：
+编辑 `.env` 文件，填入以下两个必需的 API 密钥：
+
 ```bash
-# Google Gemini API 密钥（用于 LLM 调用）
-# 获取地址: https://aistudio.google.com/app/apikey
+# Google Gemini API（获取：https://aistudio.google.com/app/apikey）
 GOOGLE_API_KEY=your-google-api-key-here
 
-# OpenAI API 密钥（用于向量嵌入）
-# 获取地址: https://platform.openai.com/api-keys
+# OpenAI API（获取：https://platform.openai.com/api-keys）
 OPENAI_API_KEY=your-openai-api-key-here
 ```
 
-**替代方式：直接设置环境变量**
+**⚠️ 说明：** DeepReader 是本地文档分析系统，不需要搜索引擎 API（如 Serper、Tavily 等）。
 
-如果你不想使用 `.env` 文件，也可以直接设置环境变量：
-
-**macOS/Linux:**
-```bash
-export GOOGLE_API_KEY="your-google-api-key"
-export OPENAI_API_KEY="your-openai-api-key"
-```
-
-**Windows (PowerShell):**
-```powershell
-$env:GOOGLE_API_KEY="your-google-api-key"
-$env:OPENAI_API_KEY="your-openai-api-key"
-```
-
-**Windows (CMD):**
-```cmd
-set GOOGLE_API_KEY=your-google-api-key
-set OPENAI_API_KEY=your-openai-api-key
-```
-
-**⚠️ 重要说明：**
-- DeepReader 是**本地文档分析系统**，使用 FAISS 向量数据库进行检索
-- **不需要**网络搜索引擎 API（如 Serper、Tavily、Bing 等）
-- 所有分析都基于你上传的文档内容
-
-### 4. 验证安装
-
-验证关键依赖是否正确安装：
-
-```bash
-# 检查 Python 版本
-python --version  # 应该显示 3.12.x
-
-# 检查依赖
-pip list | grep -E "prompt-toolkit|langgraph|marker-pdf|ebooklib|faiss"
-```
-
-如果使用 Poetry，所有依赖都已自动安装。如果使用 pip，确保 `marker-pdf` 和 `ebooklib` 已正确安装（用于 PDF 和 EPUB 处理）。
-
-### 5. 运行系统
-
-确保您已进入 `deepreader` 目录并已激活虚拟环境。
+### 4. 运行程序
 
 ```bash
 python main.py
@@ -503,46 +346,45 @@ DeepReader 支持多种文档格式，系统会自动检测并处理：
    - 示例：`"技术架构师"`
    - 示例：`"产品经理"`
 
-## 🎬 完整使用示例
-
-以下是一个典型的使用流程示例：
+## 🎬 使用示例
 
 ```bash
-# 1. 启动程序
+# 启动程序
 python main.py
 
-# 2. 输入文件路径
-请输入待处理文件的绝对路径: /Users/username/Documents/annual_report.pdf
+# 按提示输入信息
+============================================================
+📚 DeepReader - 深度阅读助手
+============================================================
 
-# 3. 系统自动检测并转换
-检测到 PDF 文件，开始转换: /Users/username/Documents/annual_report.pdf
-执行命令: marker_single /Users/username/Documents/annual_report.pdf --output_format markdown --output_dir /Users/username/Documents --disable_image_extraction
+📄 待处理文件的绝对路径
+   > /Users/username/Documents/深度思考.epub
 
-✅ PDF 转换完成，已保存到: /Users/username/Documents/annual_report/annual_report.md
+✅ 文件已选择: 深度思考.epub
 
-# 4. 文档清理提示
-⚠️  请检查生成的 Markdown 文件并进行必要的清理：
-   - 删除不相关的内容（如附录、声明等）
-   - 检查格式是否正确
-   - 确保章节结构清晰
+🎯 您的核心探索问题（这将指导整个分析过程）
+   > 如何培养深度思考的能力？
 
-请完成文件清理后按回车键继续...
+✅ 核心问题: 如何培养深度思考的能力？
 
-# 5. 输入分析参数
-请输入您的核心探索问题: 这家公司2023年的主要增长驱动因素是什么？
-请输入您期望的研究角色: 资深财务分析师
+👤 研究角色
+   > 教育研究者
 
-# 6. 开始智能分析
+✅ 研究角色: 教育研究者
+
+============================================================
+
+# 系统自动处理并生成报告
 --- 任务信息 ---
-文档: annual_report.pdf
-任务ID: a1b2c3d4e5f6...
+文档: 深度思考.epub
+任务ID: 7d43b281...
 
 --- 进入增强型 RAG 持久化节点 ---
 --- 迭代式阅读节点开始 ---
 --- 报告生成节点启动：写作研讨会开始 ---
 
-# 7. 输出结果
-✅ 完整状态已保存: output/20250702_210000_annual_report/final_state.json
+# 分析完成
+✅ 完整状态已保存: output/20251106_163542_深度思考/final_state.json
 ✅ 已生成报告: chapter_summary.md
 ✅ 已生成报告: draft_report.md
 ✅ 已生成报告: thematic_analysis.md
@@ -551,78 +393,21 @@ python main.py
 
 ---
 
-## ⚠️ 潜在版本冲突与解决方案
+## ⚠️ 常见问题
 
-由于项目依赖了多个复杂的AI和机器学习库，可能会遇到一些包版本冲突。以下是已知的潜在冲突及解决方案：
+### macOS OpenMP 冲突错误
 
-### 已知冲突
+如果在 macOS 上运行时遇到 `OMP: Error #15` 错误，这是 OpenMP 库冲突导致的。解决方法已内置在 `main.py` 中，无需额外配置。
 
-1. **langchain-google-genai vs google-ai-generativelanguage**
-   ```
-   langchain-google-genai 2.1.6 requires google-ai-generativelanguage>=0.6.18
-   但安装的是 google-ai-generativelanguage 0.6.15
-   ```
+### 依赖版本冲突
 
-2. **marker-pdf vs Pillow**
-   ```
-   marker-pdf 1.8.0 requires Pillow<11.0.0,>=10.1.0
-   但安装的是 pillow 11.3.0
-   ```
+如果遇到依赖版本警告，通常不影响运行。如果出现实际错误，可以重新创建虚拟环境：
 
-3. **surya-ocr vs Pillow**
-   ```
-   surya-ocr 0.14.6 requires pillow<11.0.0,>=10.2.0
-   但安装的是 pillow 11.3.0
-   ```
-
-### 解决方案
-
-这些版本冲突是**非致命性**的，不会影响核心功能的运行。如果遇到问题，可以尝试以下解决方案：
-
-#### 方案1：忽略冲突（推荐）
-大多数情况下，这些小的版本差异不会影响程序运行。如果程序能正常工作，可以忽略这些警告。
-
-#### 方案2：重新创建虚拟环境
-如果遇到运行时错误，可以删除虚拟环境重新安装：
-
-**macOS/Linux:**
 ```bash
 rm -rf .venv
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-**Windows (PowerShell):**
-```powershell
-Remove-Item -Recurse -Force .venv
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-**Windows (CMD):**
-```cmd
-rmdir /s .venv
-python -m venv .venv
-.venv\Scripts\activate.bat
-pip install -r requirements.txt
-```
-
-#### 方案3：手动解决特定冲突
-如果某个特定功能不工作，可以针对性地调整版本：
-```bash
-# 示例：如果 Google AI 功能有问题
-pip install "google-ai-generativelanguage>=0.6.18"
-
-# 示例：如果图像处理有问题
-pip install "pillow>=10.1.0,<11.0.0"
-```
-
-### 检查冲突状态
-可以使用以下命令检查当前的依赖冲突：
-```bash
-pip check
 ```
 
 ---
@@ -631,43 +416,38 @@ pip check
 
 ```
 deepreader/
-├── main.py                 # 主程序入口，集成多格式文档处理
-├── README.md               # 本文档
-├── pyproject.toml          # Poetry 依赖与项目配置
-├── requirements.txt        # pip 依赖文件
+├── main.py                       # 主程序入口
+├── .env.example                  # 环境变量配置模板
+├── requirements.txt              # 依赖清单
 ├── backend/
-│   ├── read_graph.py       # LangGraph 工作流定义
-│   ├── read_state.py       # 核心状态对象 (State)
-│   ├── config.py           # 系统配置 (模型、解析策略等)
-│   ├── prompts.py          # 所有 Prompt 模板
-│   ├── components/         # 核心组件 (LLM调用, 向量数据库等)
-│   ├── graph/              # LangGraph 的节点与业务逻辑
-│   ├── scraper/            # 文档解析器模块
-│   │   ├── pdf_converter.py      # PDF转换器 (本地marker)
-│   │   ├── epub_converter.py     # EPUB转换器 (ebooklib)
-│   │   ├── web_scraper.py        # 网页抓取器
-│   │   ├── clean_rule.py         # Markdown清洗规则
-│   │   ├── scraper_tools.py      # 通用工具函数
-│   │   └── multipdf.py           # 批量PDF处理
-│   ├── cache/              # 缓存目录 (检查点, 会话信息等)
-│   └── memory/             # 向量存储目录 (FAISS, SQLite)
-└── output/                 # 分析结果输出目录
-    └── [timestamp]_[document]/  # 按时间戳和文档名组织的结果
-        ├── final_state.json     # 完整分析状态
-        ├── chapter_summary.md   # 章节摘要
-        ├── draft_report.md      # 最终分析报告
-        ├── thematic_analysis.md # 主题思想分析
-        └── debate_questions.md  # 批判性问答记录
+│   ├── config.py                 # 系统配置（模型、模式等）
+│   ├── read_graph.py             # LangGraph 工作流定义
+│   ├── read_state.py             # 状态对象定义
+│   ├── prompts.py                # 所有 Agent 的 Prompt 模板
+│   ├── components/               # 核心组件
+│   │   ├── llm.py                # LLM 调用封装
+│   │   ├── vector_store.py       # FAISS 向量数据库
+│   │   └── google_llm.py         # Google SDK 封装
+│   ├── graph/                    # LangGraph 节点
+│   │   ├── nodes/                # 三大核心节点
+│   │   │   ├── RAGPersistenceNode.py
+│   │   │   ├── IterativeReadingLoop.py
+│   │   │   └── ReportGenerationNode.py
+│   │   └── actions/              # 业务逻辑
+│   ├── scraper/                  # 文档解析器
+│   │   ├── pdf_converter.py      # PDF → Markdown
+│   │   ├── epub_converter.py     # EPUB → Markdown
+│   │   └── clean_rule.py         # 文本清洗
+│   ├── cache/                    # 检查点和会话缓存
+│   └── memory/                   # FAISS 向量存储
+└── output/                       # 分析结果输出
+    └── {timestamp}_{document}/
+        ├── draft_report.md       # ⭐ 最终报告
+        ├── chapter_summary.md    # 章节摘要
+        ├── thematic_analysis.md  # 核心思想
+        ├── debate_questions.md   # 深度问答
+        └── final_state.json      # 完整状态
 ```
-
-### 🔧 核心模块说明
-
-**文档解析器 (backend/scraper/)**
-- `pdf_converter.py`: 使用本地 marker 进行高质量 PDF 转换
-- `epub_converter.py`: 使用 ebooklib 处理 EPUB 电子书
-- `web_scraper.py`: 网页内容抓取和清理
-- `clean_rule.py`: 统一的 Markdown 文本清洗规则
-- `multipdf.py`: 批量处理多个 PDF 文件的工具
 
 ## 📊 输出结果
 
