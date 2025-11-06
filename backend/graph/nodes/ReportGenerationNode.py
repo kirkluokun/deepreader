@@ -49,7 +49,10 @@ async def report_generation_node(state: DeepReaderState) -> Dict[str, Any]:
 
     # --- 2. 主题思想家 (初稿) ---
     logging.info("步骤 2/5: 主题思想家正在提炼核心思想...")
-    initial_keys = await extract_themes_action(chapter_summaries)
+    initial_keys = await extract_themes_action(
+        chapter_summaries=chapter_summaries,
+        user_core_question=user_core_question
+    )
     logging.info("主题思想家完成初稿。")
 
     # --- 3. 批判者与思想家 (辩论与共识) ---
@@ -65,16 +68,18 @@ async def report_generation_node(state: DeepReaderState) -> Dict[str, Any]:
     for i in range(debate_rounds):
         logging.info(f"辩论第 {i+1} 轮开始...")
         feedback = await critique_and_refine_action(
-            current_keys, 
-            raw_reviewer_outputs,
-            background_summary
+            current_keys=current_keys,
+            raw_reviewer_outputs=raw_reviewer_outputs,
+            background_summary=background_summary,
+            user_core_question=user_core_question
         )
         discussion_log.append(f"Round {i+1} Critique: {feedback}")
         
         # 带着批判者的反馈，再次提炼
         logging.info("主题思想家根据反馈进行优化...")
         current_keys = await extract_themes_action(
-            chapter_summaries,
+            chapter_summaries=chapter_summaries,
+            user_core_question=user_core_question,
             feedback_from_critic=feedback
         )
         discussion_log.append(f"Round {i+1} Refined Themes: {current_keys}")

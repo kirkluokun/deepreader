@@ -47,7 +47,7 @@ class DeepReaderConfig:
 
     # 当 PARSING_STRATEGY 设置为 'snippet' 时，每个文本片段的目标字数。
     # 这个数值越大，阅读速度越快，但是阅读精度可能有一定程度下降。类似于“一目十行”速度越快。
-    SNIPPET_CHUNK_SIZE: int = 8000
+    SNIPPET_CHUNK_SIZE: int = 10000
 
     # =================================================================
     # 报告生成模式配置

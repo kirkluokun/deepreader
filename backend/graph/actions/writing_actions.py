@@ -285,11 +285,17 @@ async def analyze_narrative_flow_action(chapter_summaries: Dict[str, str]) -> st
 
 async def extract_themes_action(
     chapter_summaries: Dict[str, str], 
+    user_core_question: str,
     feedback_from_critic: Optional[str] = None
 ) -> Dict[str, str]:
     """
     主题思想家 Action: 提炼书籍的核心思想、结论和证据。
     如果收到批判者的反馈，则在此基础上进行优化。
+    
+    Args:
+        chapter_summaries: 所有章节的摘要字典
+        user_core_question: 用户的核心研究问题
+        feedback_from_critic: (可选) 批判者的反馈
     """
     logging.info("--- 主题思想家开始工作 ---")
     feedback_section = ""
@@ -300,6 +306,7 @@ async def extract_themes_action(
 {feedback_from_critic}
 """
     prompt = EXTRACT_THEMES_PROMPT.format(
+        user_core_question=user_core_question,
         all_chapter_summaries=json.dumps(chapter_summaries, ensure_ascii=False, indent=2),
         feedback_section=feedback_section
     )
@@ -330,13 +337,21 @@ async def extract_themes_action(
 async def critique_and_refine_action(
     current_keys: Dict[str, str],
     raw_reviewer_outputs: List[List[Dict[str, Any]]],
-    background_summary: str
+    background_summary: str,
+    user_core_question: str
 ) -> str:
     """
     批判者 Action: 对主题思想家的提炼结果提出质疑和改进建议。
+    
+    Args:
+        current_keys: 当前版本的核心思想
+        raw_reviewer_outputs: 阅读阶段的所有问答记录
+        background_summary: 全书背景摘要
+        user_core_question: 用户的核心研究问题
     """
     logging.info("--- 批判者开始工作 ---")
     prompt = CRITIQUE_THEMES_PROMPT.format(
+        user_core_question=user_core_question,
         key_idea=current_keys.get("key_idea", ""),
         key_conclusion=current_keys.get("key_conclusion", ""),
         key_evidence=current_keys.get("key_evidence", ""),

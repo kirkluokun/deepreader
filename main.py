@@ -22,6 +22,14 @@ from typing import Dict, Any, List, Optional
 from dotenv import load_dotenv
 load_dotenv()
 
+# 解决 macOS OpenMP 冲突问题
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
+
+# 导入 prompt_toolkit 用于更好的输入体验
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import InMemoryHistory
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+
 # --- 1. 初始化环境 ---
 def setup_environment():
     """设置工作目录和 sys.path，确保脚本从 dynamic-gptr 根目录运行"""
@@ -41,9 +49,9 @@ def setup_environment():
 
     # 将工作目录添加到 sys.path
     if str(workspace_root) not in sys.path:
-        sys.path.insert(0, str(workspace_root))
+        sys.path.append(str(workspace_root))
 
-# setup_environment()
+setup_environment()
 
 # --- 2. 导入必要的模块 ---
 from backend.read_graph import create_deepreader_graph
@@ -81,17 +89,63 @@ def save_session_cache(data: Dict[str, str]):
     with open(SESSION_CACHE_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-def get_user_inputs(defaults: Dict[str, str]) -> Dict[str, str]:
-    """提示用户输入并获取必要的参数"""
-    print("\\n--- 请输入研究任务所需信息 ---")
+async def get_user_inputs(defaults: Dict[str, str]) -> Dict[str, str]:
+    """提示用户输入并获取必要的参数（使用 prompt_toolkit 提升体验）"""
+    print("\\n" + "="*60)
+    print("📚 DeepReader - 深度阅读助手")
+    print("="*60)
+    print("\\n请输入研究任务所需信息（支持上下键浏览历史）\\n")
     
-    document_path = input(f"请输入待处理文件的绝对路径 [{defaults.get('document_path', '')}]: ") or defaults.get('document_path', '')
-    while not Path(document_path).exists() or not Path(document_path).is_file():
-        print("❌ 文件路径无效或文件不存在，请重新输入。")
-        document_path = input("请输入待处理文件的绝对路径: ")
-
-    user_core_question = input(f"请输入您的核心探索问题 [{defaults.get('user_core_question', '')}]: ") or defaults.get('user_core_question', '')
-    research_role = input(f"请输入您期望的研究角色 [{defaults.get('research_role', '资深行业分析师')}]: ") or defaults.get('research_role', '资深行业分析师')
+    # 创建 prompt session，支持历史记录和自动建议
+    session = PromptSession(
+        history=InMemoryHistory(),
+        auto_suggest=AutoSuggestFromHistory()
+    )
+    
+    # 1. 输入文档路径
+    default_path = defaults.get('document_path', '')
+    path_prompt = f"📄 待处理文件的绝对路径"
+    if default_path:
+        path_prompt += f"\\n   [默认: {default_path}]"
+    path_prompt += "\\n   > "
+    
+    document_path = (await session.prompt_async(path_prompt)).strip() or default_path
+    
+    while not document_path or not Path(document_path).exists() or not Path(document_path).is_file():
+        if not document_path:
+            print("❌ 路径不能为空")
+        else:
+            print(f"❌ 文件路径无效或文件不存在: {document_path}")
+        document_path = (await session.prompt_async("   请重新输入文件路径\\n   > ")).strip()
+    
+    print(f"✅ 文件已选择: {Path(document_path).name}\\n")
+    
+    # 2. 输入核心问题
+    default_question = defaults.get('user_core_question', '')
+    question_prompt = f"🎯 您的核心探索问题（这将指导整个分析过程）"
+    if default_question:
+        question_prompt += f"\\n   [默认: {default_question}]"
+    question_prompt += "\\n   > "
+    
+    user_core_question = (await session.prompt_async(question_prompt, multiline=False)).strip() or default_question
+    
+    while not user_core_question:
+        print("❌ 核心问题不能为空")
+        user_core_question = (await session.prompt_async("   请输入您的核心探索问题\\n   > ", multiline=False)).strip()
+    
+    print(f"✅ 核心问题: {user_core_question}\\n")
+    
+    # 3. 输入研究角色
+    default_role = defaults.get('research_role', '资深行业分析师')
+    role_prompt = f"👤 研究角色"
+    if default_role:
+        role_prompt += f"\\n   [默认: {default_role}]"
+    role_prompt += "\\n   > "
+    
+    research_role = (await session.prompt_async(role_prompt)).strip() or default_role
+    print(f"✅ 研究角色: {research_role}\\n")
+    
+    print("="*60)
 
     return {
         "document_path": document_path,
@@ -131,7 +185,9 @@ def convert_document_to_markdown(file_path: str) -> str:
         
         # 检查是否已存在转换后的文件
         if expected_md_path.exists():
-            choice = input(f"\\n发现已存在的 Markdown 文件: {expected_md_path}\\n是否使用现有文件? (Y/n): ").lower()
+            print(f"\\n💡 发现已存在的 Markdown 文件:")
+            print(f"   {expected_md_path}")
+            choice = input("   是否使用现有文件? (Y/n): ").lower().strip()
             if choice == 'y' or choice == '':
                 return expected_md_path.read_text(encoding='utf-8')
         
@@ -188,7 +244,7 @@ def convert_document_to_markdown(file_path: str) -> str:
         print("   - 检查格式是否正确")
         print("   - 确保章节结构清晰")
         
-        input("\\n请完成文件清理后按回车键继续...")
+        input("\\n✏️  请完成文件清理后按回车键继续...")
         
         # 重新读取可能被用户修改的文件
         return actual_md_path.read_text(encoding='utf-8')
@@ -203,7 +259,9 @@ def convert_document_to_markdown(file_path: str) -> str:
         
         # 检查是否已存在转换后的文件
         if expected_md_path.exists():
-            choice = input(f"\\n发现已存在的 Markdown 文件: {expected_md_path}\\n是否使用现有文件? (Y/n): ").lower()
+            print(f"\\n💡 发现已存在的 Markdown 文件:")
+            print(f"   {expected_md_path}")
+            choice = input("   是否使用现有文件? (Y/n): ").lower().strip()
             if choice == 'y' or choice == '':
                 return expected_md_path.read_text(encoding='utf-8')
         
@@ -260,7 +318,7 @@ def convert_document_to_markdown(file_path: str) -> str:
         print("   - 检查格式是否正确")
         print("   - 确保章节结构清晰")
         
-        input("\\n请完成文件清理后按回车键继续...")
+        input("\\n✏️  请完成文件清理后按回车键继续...")
         
         # 重新读取可能被用户修改的文件
         return actual_md_path.read_text(encoding='utf-8')
@@ -439,7 +497,7 @@ async def main():
     
     # 获取用户输入并维护会话
     session_defaults = load_session_cache()
-    user_inputs = get_user_inputs(session_defaults)
+    user_inputs = await get_user_inputs(session_defaults)
     save_session_cache(user_inputs)
     
     document_path = Path(user_inputs["document_path"])
@@ -471,13 +529,13 @@ async def main():
         try:
             existing_state = await memory.aget_state(config)
             if existing_state and existing_state.next:
-                print("\n⚠️ 检测到该文档有未完成的任务。")
-                choice = input("是否从上次断点处继续? (Y/n): ").lower()
+                print("\\n⚠️  检测到该文档有未完成的任务。")
+                choice = input("   是否从上次断点处继续? (Y/n): ").lower().strip()
                 if choice == 'y' or choice == '':
                     continue_task = True
-                    print("▶️ 正在恢复任务...")
+                    print("▶️  正在恢复任务...")
                 else:
-                    print("🗑️ 已选择开始新任务，旧进度将被覆盖。")
+                    print("🗑️  已选择开始新任务，旧进度将被覆盖。")
             elif existing_state and not existing_state.next:
                  print("\nℹ️ 检测到该文档已有一个完成的任务。将开始一个新任务。")
         except Exception:
