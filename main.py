@@ -72,6 +72,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # 过滤掉一些过于冗长的第三方库日志
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("openai").setLevel(logging.WARNING)
 
 # --- 5. 会话管理 ---
 def load_session_cache() -> Dict[str, str]:
@@ -460,12 +462,17 @@ def _clean_markdown_tables(content: str) -> str:
     return '\n'.join(cleaned_lines)
 
 def _format_summaries_to_md(summaries: Dict[str, str]) -> str:
-    """格式化章节摘要为 Markdown"""
+    """
+    格式化章节摘要为 Markdown
+    
+    注意：保持字典的插入顺序（即阅读顺序），不进行排序。
+    Python 3.7+ 字典保持插入顺序，chapter_summaries 在阅读时按顺序插入。
+    """
     if not summaries:
         return "没有可用的章节摘要。"
     content = ["# 章节摘要"]
-    # 按章节标题（键）排序
-    for title, summary in sorted(summaries.items()):
+    # 按阅读顺序输出（保持字典插入顺序）
+    for title, summary in summaries.items():
         content.append(f"## {title}\n\n{summary}")
     return "\n\n".join(content)
 
@@ -639,8 +646,10 @@ async def main():
             
             # 从断点恢复
             async for event in app.astream(None, config=config):
-                pprint(event)
-                print("-" * 40)
+                # 只打印节点名称，不打印完整状态
+                if event:
+                    node_name = list(event.keys())[0] if event else "unknown"
+                    logging.info(f"✅ 节点完成: {node_name}")
         else:
             # 开始一个新任务
             initial_state = DeepReaderState(
@@ -673,8 +682,10 @@ async def main():
                 error=None
             )
             async for event in app.astream(initial_state, config=config):
-                pprint(event)
-                print("-" * 40)
+                # 只打印节点名称，不打印完整状态
+                if event:
+                    node_name = list(event.keys())[0] if event else "unknown"
+                    logging.info(f"✅ 节点完成: {node_name}")
 
         print("\n--- ✅ 图流程执行完毕 ---")
 

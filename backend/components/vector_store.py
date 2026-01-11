@@ -9,6 +9,10 @@ from langchain_core.vectorstores import VectorStore
 from langchain_core.documents import Document
 from typing import List, Dict, Any, Iterable, Optional, Type
 
+# 禁用 FAISS 的 OpenMP 多线程，避免与 gRPC 并发冲突
+# 这是导致 "OMP: Error #179: Function pthread_mutex_init failed" 的根本原因
+faiss.omp_set_num_threads(1)
+
 class DeepReaderVectorStore(VectorStore):
     """
     一个基于 FAISS 和 SQLite 的自定义向量存储，与 LangChain 集成。
@@ -132,26 +136,60 @@ class DeepReaderVectorStore(VectorStore):
         """
         根据查询向量，在 FAISS 中进行相似度搜索。
         """
-        query_embedding = self.embedding_model.embed_query(query)
-        query_embedding_np = np.array([query_embedding], dtype='float32')
-
-        # 在 FAISS 中搜索
-        distances, chunk_ids = self.index.search(query_embedding_np, k)
-
-        # 从 SQLite 中根据 ID 获取内容并格式化为 Document 对象
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        results = []
-        for i in chunk_ids[0]:
-            if i == -1: continue # FAISS 在结果不足k个时会返回-1
+        import logging
+        import sys
+        import traceback
+        
+        try:
+            # 步骤1: Embedding
+            logging.debug(f"[VectorStore] 开始 embed_query...")
+            sys.stdout.flush()
             
-            cursor.execute("SELECT content, metadata FROM chunks WHERE id = ?", (int(i),))
-            res = cursor.fetchone()
-            if res:
-                metadata = json.loads(res[1]) if res[1] else {}
-                results.append(Document(page_content=res[0], metadata=metadata))
-        conn.close()
-        return results
+            query_embedding = self.embedding_model.embed_query(query)
+            
+            logging.debug(f"[VectorStore] embed_query 完成，维度: {len(query_embedding)}")
+            sys.stdout.flush()
+            
+            query_embedding_np = np.array([query_embedding], dtype='float32')
+
+            # 步骤2: FAISS 搜索
+            logging.debug(f"[VectorStore] 开始 FAISS index.search...")
+            sys.stdout.flush()
+            
+            distances, chunk_ids = self.index.search(query_embedding_np, k)
+            
+            logging.debug(f"[VectorStore] FAISS search 完成，找到 {len(chunk_ids[0])} 个结果")
+            sys.stdout.flush()
+
+            # 步骤3: 从 SQLite 获取内容
+            logging.debug(f"[VectorStore] 开始从 SQLite 获取内容...")
+            sys.stdout.flush()
+            
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            results = []
+            for i in chunk_ids[0]:
+                if i == -1: continue # FAISS 在结果不足k个时会返回-1
+                
+                cursor.execute("SELECT content, metadata FROM chunks WHERE id = ?", (int(i),))
+                res = cursor.fetchone()
+                if res:
+                    metadata = json.loads(res[1]) if res[1] else {}
+                    results.append(Document(page_content=res[0], metadata=metadata))
+            conn.close()
+            
+            logging.debug(f"[VectorStore] similarity_search 完成，返回 {len(results)} 个文档")
+            sys.stdout.flush()
+            
+            return results
+            
+        except Exception as e:
+            logging.critical(f"[VectorStore] !!! similarity_search 发生异常 !!!")
+            logging.critical(f"异常类型: {type(e).__name__}")
+            logging.critical(f"异常信息: {e}")
+            logging.critical(f"调用栈:\n{traceback.format_exc()}")
+            sys.stdout.flush()
+            raise
 
     @classmethod
     def from_texts(

@@ -18,19 +18,19 @@ class DeepReaderConfig:
     
     # Fast LLM - 用于快速、成本较低的任务
     FAST_LLM_PROVIDER: str = "google_genai"
-    FAST_LLM_MODEL: str = "gemini-2.0-flash"
+    FAST_LLM_MODEL: str = "gemini-3-flash-preview"
     
     # Smart LLM - 用于需要较高质量的文本生成任务
     SMART_LLM_PROVIDER: str = "google_genai"
-    SMART_LLM_MODEL: str = "gemini-2.5-flash"
+    SMART_LLM_MODEL: str = "gemini-3-flash-preview"
     
     # Strategic LLM - 用于最复杂、最重要的任务
     STRATEGIC_LLM_PROVIDER: str = "google_genai"
-    STRATEGIC_LLM_MODEL: str = "gemini-2.5-pro"
+    STRATEGIC_LLM_MODEL: str = "gemini-3-pro-preview"
     
     # Search LLM - 用于需要联网搜索的任务
     SEARCH_LLM_PROVIDER: str = "google_genai"
-    SEARCH_LLM_MODEL: str = "gemini-2.0-flash"
+    SEARCH_LLM_MODEL: str = "gemini-3-flash-preview"
     
     # LLM 通用参数
     TEMPERATURE: float = 0.5
@@ -47,7 +47,7 @@ class DeepReaderConfig:
 
     # 当 PARSING_STRATEGY 设置为 'snippet' 时，每个文本片段的目标字数。
     # 这个数值越大，阅读速度越快，但是阅读精度可能有一定程度下降。类似于“一目十行”速度越快。
-    SNIPPET_CHUNK_SIZE: int = 10000
+    SNIPPET_CHUNK_SIZE: int = 6000
 
     # =================================================================
     # 报告生成模式配置
@@ -71,7 +71,7 @@ class DeepReaderConfig:
             'reading_agent_questions': 3,
             'debate_rounds': 3,
             'outline_max_top_level': 6,
-            'outline_max_second_level': 5
+            'outline_max_second_level': 10
         },
         'deep': {
             'reading_agent_questions': 5,

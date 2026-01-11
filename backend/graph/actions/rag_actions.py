@@ -7,6 +7,24 @@ import logging
 import json
 from json_repair import loads as json_repair_loads
 import asyncio
+import traceback
+import sys
+import signal
+import faulthandler
+
+# 启用 faulthandler 来捕获 segmentation fault 的详细信息
+faulthandler.enable()
+
+def _segfault_handler(signum, frame):
+    """捕获 SIGSEGV 信号并打印调用栈"""
+    logging.critical("!!! 捕获到 SIGSEGV (Segmentation Fault) !!!")
+    logging.critical(f"信号: {signum}")
+    logging.critical("调用栈:")
+    traceback.print_stack(frame)
+    sys.exit(1)
+
+# 注册信号处理器
+signal.signal(signal.SIGSEGV, _segfault_handler)
 
 def chunk_document(markdown_content: str, source_id: str) -> List[Dict[str, Any]]:
     """
@@ -52,48 +70,72 @@ def persist_chunks(chunk_objects: List[Dict[str, Any]], db_name: str = None, db_
 async def _answer_single_question(
     question: str, 
     vector_store: DeepReaderVectorStore, 
-    user_question: str
+    user_question: str,
+    question_index: int = 0
 ) -> Dict[str, Any]:
     """
     (内部函数) 异步处理单个问题。
     """
-    # 1. 在全书范围内检索相关片段
-    retrieved_docs = vector_store.similarity_search(question, k=10)
-    context = "\\n\\n---\\n\\n".join([doc.page_content for doc in retrieved_docs])
-
-    # 2. 将上下文和问题喂给 LLM
-    prompt = REVIEWER_AGENT_PROMPT.format(
-        question=question, 
-        context=context,
-        user_question=user_question
-    )
-    
-    for attempt in range(3):
-        logging.info(f"--- ReviewerAgent 回答问题 (尝试 {attempt + 1}/3): {question[:50]}... ---")
-        response_json_str = await call_fast_llm(prompt)
+    try:
+        # 1. 在全书范围内检索相关片段
+        logging.debug(f"[Q{question_index}] 开始 similarity_search: {question[:30]}...")
+        sys.stdout.flush()  # 强制刷新输出
         
-        # 3. 解析 LLM 返回的 JSON
-        try:
-            if response_json_str.strip().startswith("```json"):
-                response_json_str = response_json_str.strip()[7:-3].strip()
+        retrieved_docs = vector_store.similarity_search(question, k=10)
+        
+        logging.debug(f"[Q{question_index}] similarity_search 完成，获取 {len(retrieved_docs)} 个文档")
+        sys.stdout.flush()
+        
+        context = "\\n\\n---\\n\\n".join([doc.page_content for doc in retrieved_docs])
+
+        # 2. 将上下文和问题喂给 LLM
+        prompt = REVIEWER_AGENT_PROMPT.format(
+            question=question, 
+            context=context,
+            user_question=user_question
+        )
+        
+        for attempt in range(3):
+            logging.info(f"[Q{question_index}] ReviewerAgent 回答问题 (尝试 {attempt + 1}/3): {question[:50]}...")
+            sys.stdout.flush()
             
-            parsed_obj = json_repair_loads(response_json_str)
+            response_json_str = await call_fast_llm(prompt)
+            
+            # 3. 解析 LLM 返回的 JSON
+            try:
+                if response_json_str.strip().startswith("```json"):
+                    response_json_str = response_json_str.strip()[7:-3].strip()
+                
+                parsed_obj = json_repair_loads(response_json_str)
 
-            if not isinstance(parsed_obj, dict) or not all(k in parsed_obj for k in ["question", "content_retrieve_answer"]):
-                    raise ValueError("ReviewerAgent 返回的 JSON 对象缺少必需的键。")
+                if not isinstance(parsed_obj, dict) or not all(k in parsed_obj for k in ["question", "content_retrieve_answer"]):
+                        raise ValueError("ReviewerAgent 返回的 JSON 对象缺少必需的键。")
 
-            return parsed_obj # 成功解析并验证后，返回结果
-        except (json.JSONDecodeError, ValueError) as e:
-            logging.warning(f"ReviewerAgent JSON 解析失败 (尝试 {attempt + 1}/3): {e}\\n原始响应: {response_json_str}")
-            if attempt == 2: # 最后一次尝试失败
-                logging.error(f"ReviewerAgent 对问题 '{question[:50]}...' 的回答在所有重试后解析失败: {e}")
-                return {
-                    "question": question,
-                    "content_retrieve_answer": f"Error parsing answer after retries: {e}",
-                    "error": str(e)
-                }
-    # 理论上不会执行到这里
-    return {"question": question, "content_retrieve_answer": "Unexpected error after retry loop.", "error": "Unexpected flow exit."}
+                logging.debug(f"[Q{question_index}] 问题回答完成")
+                return parsed_obj # 成功解析并验证后，返回结果
+            except (json.JSONDecodeError, ValueError) as e:
+                logging.warning(f"ReviewerAgent JSON 解析失败 (尝试 {attempt + 1}/3): {e}\\n原始响应: {response_json_str}")
+                if attempt == 2: # 最后一次尝试失败
+                    logging.error(f"ReviewerAgent 对问题 '{question[:50]}...' 的回答在所有重试后解析失败: {e}")
+                    return {
+                        "question": question,
+                        "content_retrieve_answer": f"Error parsing answer after retries: {e}",
+                        "error": str(e)
+                    }
+        # 理论上不会执行到这里
+        return {"question": question, "content_retrieve_answer": "Unexpected error after retry loop.", "error": "Unexpected flow exit."}
+    
+    except Exception as e:
+        logging.critical(f"[Q{question_index}] !!! _answer_single_question 发生异常 !!!")
+        logging.critical(f"异常类型: {type(e).__name__}")
+        logging.critical(f"异常信息: {e}")
+        logging.critical(f"调用栈:\n{traceback.format_exc()}")
+        sys.stdout.flush()
+        return {
+            "question": question,
+            "content_retrieve_answer": f"Critical error: {e}",
+            "error": str(e)
+        }
 
 
 async def chat_with_retriever(
@@ -103,7 +145,7 @@ async def chat_with_retriever(
 ) -> List[Dict[str, Any]]:
     """
     针对一系列问题，在文档内部的 RAG 存储中进行检索并生成结构化的 JSON 答案。
-    (该函数现在并行处理所有问题)
+    (该函数并行处理所有问题)
 
     Args:
         questions: ReadingAgent 生成的问题列表。
@@ -118,21 +160,50 @@ async def chat_with_retriever(
         return []
 
     logging.info(f"--- ReviewerAgent 开始并行回答 {len(questions)} 个问题 ---")
+    sys.stdout.flush()
     
-    # 加载 RAG 存储
-    vector_store = DeepReaderVectorStore(db_name=db_name)
-    
-    # 为每个问题创建一个异步任务
-    tasks = [
-        _answer_single_question(question, vector_store, user_question)
-        for question in questions
-    ]
-    
-    # 并发执行所有任务
-    answers = await asyncio.gather(*tasks)
-    
-    logging.info(f"--- ReviewerAgent 已完成所有问题的回答 ---")
-    return answers 
+    try:
+        # 加载 RAG 存储
+        logging.info(f"正在加载向量存储: {db_name}")
+        sys.stdout.flush()
+        
+        vector_store = DeepReaderVectorStore(db_name=db_name)
+        
+        logging.info(f"向量存储加载完成，FAISS 索引大小: {vector_store.index.ntotal}")
+        sys.stdout.flush()
+        
+        # 为每个问题创建一个异步任务（带索引用于调试）
+        tasks = [
+            _answer_single_question(question, vector_store, user_question, i)
+            for i, question in enumerate(questions)
+        ]
+        
+        logging.info(f"已创建 {len(tasks)} 个异步任务，开始并发执行...")
+        sys.stdout.flush()
+        
+        # 并发执行所有任务
+        answers = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # 检查是否有异常
+        for i, answer in enumerate(answers):
+            if isinstance(answer, Exception):
+                logging.error(f"任务 {i} 返回异常: {answer}")
+                answers[i] = {
+                    "question": questions[i],
+                    "content_retrieve_answer": f"Task exception: {answer}",
+                    "error": str(answer)
+                }
+        
+        logging.info(f"--- ReviewerAgent 已完成所有问题的回答 ---")
+        return answers
+        
+    except Exception as e:
+        logging.critical(f"!!! chat_with_retriever 发生严重错误 !!!")
+        logging.critical(f"异常类型: {type(e).__name__}")
+        logging.critical(f"异常信息: {e}")
+        logging.critical(f"调用栈:\n{traceback.format_exc()}")
+        sys.stdout.flush()
+        raise 
 
 
 async def retrieve_rag_context(query: str, db_name: str, k: int = 10) -> str:

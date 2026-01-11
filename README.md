@@ -447,7 +447,8 @@ deepreader/
 │   │   └── actions/              # 业务逻辑
 │   ├── scraper/                  # 文档解析器
 │   │   ├── pdf_converter.py      # PDF → Markdown
-│   │   ├── epub_converter.py     # EPUB → Markdown
+│   │   ├── epub_converter.py     # EPUB → Markdown  
+│   │   ├── mobi_converter.py     # MOBI → Markdown
 │   │   └── clean_rule.py         # 文本清洗
 │   ├── cache/                    # 检查点和会话缓存
 │   └── memory/                   # FAISS 向量存储
