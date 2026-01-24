@@ -69,9 +69,9 @@ class DeepReaderConfig:
         },
         'concise': {
             'reading_agent_questions': 3,
-            'debate_rounds': 3,
-            'outline_max_top_level': 6,
-            'outline_max_second_level': 10
+            'debate_rounds': 2,
+            'outline_max_top_level': 4,
+            'outline_max_second_level': 5
         },
         'deep': {
             'reading_agent_questions': 5,
