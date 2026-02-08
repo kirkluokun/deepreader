@@ -11,8 +11,6 @@ from .google_llm import call_google_llm
 from gpt_researcher.utils.llm import create_chat_completion
 from .token_counter import get_token_counter
 
-import numpy as np
-
 
 # 使用本地配置
 config = deep_reader_config

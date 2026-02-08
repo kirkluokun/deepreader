@@ -8,6 +8,8 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_core.vectorstores import VectorStore
 from langchain_core.documents import Document
 from typing import List, Dict, Any, Iterable, Optional, Type
+import tiktoken
+import logging
 
 # 禁用 FAISS 的 OpenMP 多线程，避免与 gRPC 并发冲突
 # 这是导致 "OMP: Error #179: Function pthread_mutex_init failed" 的根本原因
@@ -39,11 +41,30 @@ class DeepReaderVectorStore(VectorStore):
         if hasattr(self, 'db_path'):
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
-        # 2. 初始化 Embedding 模型
+        # 2. 预加载 tiktoken 编码（提前触发下载，避免在向量化时失败）
+        try:
+            # 根据模型名称确定需要的编码
+            if "text-embedding-3" in embedding_model_name or "gpt-4" in embedding_model_name or "gpt-3.5" in embedding_model_name:
+                encoding_name = "cl100k_base"
+            else:
+                encoding_name = "cl100k_base"  # 默认使用 cl100k_base
+            
+            logging.info(f"预加载 tiktoken 编码: {encoding_name}")
+            tiktoken.get_encoding(encoding_name)
+            logging.info("tiktoken 编码加载成功")
+        except Exception as e:
+            logging.error(f"预加载 tiktoken 编码失败: {e}")
+            logging.error("这可能是网络连接问题。请检查:")
+            logging.error("1. 网络连接是否正常")
+            logging.error("2. 是否可以访问 openaipublic.blob.core.windows.net")
+            logging.error("3. SSL 证书是否正常")
+            raise RuntimeError(f"无法加载 tiktoken 编码，请检查网络连接: {e}") from e
+
+        # 3. 初始化 Embedding 模型
         self.embedding_model = OpenAIEmbeddings(model=embedding_model_name, api_key=os.environ.get("OPENAI_API_KEY"))
         self.dimension = 3072  # text-embedding-3-large 的维度
 
-        # 3. 加载或创建数据库和 FAISS 索引
+        # 4. 加载或创建数据库和 FAISS 索引
         self._load_or_create_db()
 
     def _load_or_create_db(self):
